@@ -11,6 +11,8 @@ struct ProjectDetailView: View {
     @Binding var project: Project
     @State private var showingEditProject = false
     @State private var lastEditedDate: Date? = nil
+    @State private var isPaymentDone: Bool = false
+    @State private var isProjectCompleted: Bool = false
 
     var body: some View {
         ScrollView {
@@ -38,7 +40,9 @@ struct ProjectDetailView: View {
                 detailRow(title: "Expected End Date", value: formattedDate(project.endDate))
                 detailRow(title: "Project Type", value: project.projectType)
                 detailRow(title: "Languages Used", value: project.languagesUsed)
-
+                detailRow(title: "Total Amount", value: String(project.totalAmount))
+                detailRow(title: "Payment Method", value: project.paymentMethod)
+                
                 HStack {
                     detailRow(title: "GitHub Repo", value: project.githubRepo)
                     if !project.githubRepo.isEmpty {
@@ -64,17 +68,41 @@ struct ProjectDetailView: View {
                 }
 
                 VStack {
-                    HStack {
-                        Image(systemName: "hourglass.bottomhalf.fill")
-                            .font(.title)
-                            .foregroundColor(.purple)
-                        Text("\(daysRemaining()) days remaining")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
+                    if daysRemaining() > 0 {
+                        HStack {
+                            Image(systemName: "hourglass.bottomhalf.fill")
+                                .font(.title)
+                                .foregroundColor(.purple)
+                            Text("\(daysRemaining()) days remaining")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal)
                     }
-                    .padding(.horizontal)
                 }
 
+                Toggle(isOn: $isPaymentDone) {
+                    Text("Payment Done")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                }
+                .padding(.horizontal)
+                .onChange(of: isPaymentDone) { newValue in
+                    project.isPaymentDone = newValue
+                    autoSave()
+                }
+
+                Toggle(isOn: $isProjectCompleted) {
+                    Text("Project Completed")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                }
+                .padding(.horizontal)
+                .onChange(of: isProjectCompleted) { newValue in
+                    project.isProjectCompleted = newValue
+                    autoSave()
+                }
+                
                 if let lastEdited = lastEditedDate {
                     Text("Last Edited: \(formattedDate(lastEdited))")
                         .font(.caption)
@@ -89,6 +117,10 @@ struct ProjectDetailView: View {
         .background(Color.black.ignoresSafeArea())
         .sheet(isPresented: $showingEditProject) {
             EditProjectView(project: $project, lastEditedDate: $lastEditedDate)
+        }
+        .onAppear {
+            isPaymentDone = project.isPaymentDone
+            isProjectCompleted = project.isProjectCompleted
         }
     }
 
@@ -117,4 +149,11 @@ struct ProjectDetailView: View {
         let components = calendar.dateComponents([.day], from: currentDate, to: project.endDate)
         return components.day ?? 0
     }
+    
+    private func autoSave() {
+        if let data = try? JSONEncoder().encode(project) {
+            UserDefaults.standard.set(data, forKey: "projects")
+        }
+    }
 }
+

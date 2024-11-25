@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Project: Identifiable, Codable {
+struct Project: Identifiable, Codable, Equatable{
     var id = UUID()
     var name: String
     var developer: String
@@ -18,4 +18,8 @@ struct Project: Identifiable, Codable {
     var languagesUsed: String
     var projectType: String
     var githubRepo: String
+    var paymentMethod: String = ""
+    var totalAmount: Double
+    var isPaymentDone: Bool = false
+    var isProjectCompleted: Bool = false
 }

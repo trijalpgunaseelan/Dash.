@@ -11,12 +11,13 @@ import Foundation
 struct AddProjectView: View {
     @Environment(\.presentationMode) var presentationMode
     @Binding var projects: [Project]
-    @State private var project = Project(name: "", developer: "", customer: "", startDate: Date(), endDate: Date(), progress: 0, languagesUsed: "", projectType: "", githubRepo: "")
+    @State private var project = Project(name: "", developer: "", customer: "", startDate: Date(), endDate: Date(), progress: 0, languagesUsed: "", projectType: "", githubRepo: "", paymentMethod: "", totalAmount: 0)
     @State private var showAlert = false
     @State private var dragAmount = CGSize.zero
     let projectTypes = ["Android App", "iOS App", "Cross Platform App", "Website", "Android App and Website", "iOS App and Website", "Cross Platform App and Website", "IOT", "Others"]
     @State private var selectedLanguages = [String]()
     let languages = ["Java", "Kotlin", "C++", "Dart", "Rust", "Swift", "Objective-C", "SwiftUI", "React Native", "Flutter", "Xamarin", "Elixir", "PureScript", "HTML", "CSS", "Tailwind CSS", "JavaScript", "PHP", "Ruby", "Python", "TypeScript", "Go", "F#", "Clojure", "MySQL", "PostgreSQL", "Node.js", "ASP.NET", "Express.js", "Laravel", "Django", "Flask", "Spring", "Ruby on Rails"]
+    let paymentMethods = ["Credit Card", "Debit Card", "PayPal", "Bank Transfer", "UPI", "Other"]
 
     var body: some View {
         NavigationView {
@@ -50,6 +51,33 @@ struct AddProjectView: View {
                 .onChange(of: project.projectType) { _ in
                     autoSave()
                 }
+                Picker("Payment Method", selection: $project.paymentMethod) {
+                    ForEach(paymentMethods, id: \.self) {
+                        Text($0)
+                    }
+                }
+                .onChange(of: project.paymentMethod) { _ in
+                    autoSave()
+                }
+                TextField("Total Amount", text: Binding(
+                    get: {
+                        project.totalAmount == 0 ? "" : "\(project.totalAmount)"
+                    },
+                    set: { newValue in
+                        if let value = Double(newValue) {
+                            project.totalAmount = value
+                        } else {
+                            project.totalAmount = 0
+                        }
+                    }
+                ))
+                .keyboardType(.decimalPad)
+                .placeholder(when: project.totalAmount == 0) {
+                    Text("Total Amount").foregroundColor(.gray)
+                }
+                .onChange(of: project.totalAmount) { _ in
+                    autoSave()
+                }
             }
             .navigationBarTitle("New Project", displayMode: .inline)
             .alert(isPresented: $showAlert) {
@@ -58,11 +86,11 @@ struct AddProjectView: View {
             .gesture(
                 DragGesture()
                     .onChanged { dragAmount = $0.translation }
-                    .onEnded {_ in 
+                    .onEnded { _ in
                         if dragAmount.height > 50 {
                             presentationMode.wrappedValue.dismiss()
                         } else if dragAmount.height < -50 {
-                            if project.name.isEmpty || project.developer.isEmpty || project.customer.isEmpty || selectedLanguages.isEmpty || project.projectType.isEmpty {
+                            if project.name.isEmpty || project.developer.isEmpty || project.customer.isEmpty || selectedLanguages.isEmpty || project.projectType.isEmpty || project.paymentMethod.isEmpty || project.totalAmount <= 0 {
                                 showAlert = true
                             } else {
                                 project.languagesUsed = selectedLanguages.joined(separator: ", ")
@@ -77,7 +105,7 @@ struct AddProjectView: View {
     }
 
     private func autoSave() {
-        if project.name.isEmpty || project.developer.isEmpty || project.customer.isEmpty || selectedLanguages.isEmpty || project.projectType.isEmpty {
+        if project.name.isEmpty || project.developer.isEmpty || project.customer.isEmpty || selectedLanguages.isEmpty || project.projectType.isEmpty || project.paymentMethod.isEmpty || project.totalAmount <= 0 {
             return
         }
         
@@ -91,6 +119,15 @@ struct AddProjectView: View {
 
         if let data = try? JSONEncoder().encode(projects) {
             UserDefaults.standard.set(data, forKey: "projects")
+        }
+    }
+}
+
+extension View {
+    func placeholder<Content: View>(when shouldShow: Bool, alignment: Alignment = .leading, @ViewBuilder placeholder: () -> Content) -> some View {
+        ZStack(alignment: alignment) {
+            placeholder().opacity(shouldShow ? 1 : 0)
+            self
         }
     }
 }

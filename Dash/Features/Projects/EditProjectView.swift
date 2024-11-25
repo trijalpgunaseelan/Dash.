@@ -20,8 +20,11 @@ struct EditProjectView: View {
     @State private var selectedLanguages = [String]()
     @State private var projectType = ""
     @State private var githubRepo = ""
+    @State private var totalAmount: String = ""
+    @State private var paymentMethod: String = ""
     let projectTypes = ["Android App", "iOS App", "Cross Platform App", "Website", "Android App and Website", "iOS App and Website", "Cross Platform App and Website", "IOT", "Others"]
     let languages = ["Java", "Kotlin", "C++", "Dart", "Rust", "Swift", "Objective-C", "SwiftUI", "React Native", "Flutter", "Xamarin", "Elixir", "PureScript", "HTML", "CSS", "Tailwind CSS", "JavaScript", "PHP", "Ruby", "Python", "TypeScript", "Go", "F#", "Clojure", "MySQL", "PostgreSQL", "Node.js", "ASP.NET", "Express.js", "Laravel", "Django", "Flask", "Spring", "Ruby on Rails"]
+    let paymentMethods = ["Credit Card", "Debit Card", "PayPal", "Bank Transfer", "UPI", "Other"]
 
     var body: some View {
         NavigationView {
@@ -62,6 +65,28 @@ struct EditProjectView: View {
                     .onChange(of: githubRepo) { _ in
                         autoSave()
                     }
+                Picker("Payment Method", selection: $paymentMethod) {
+                    ForEach(paymentMethods, id: \.self) {
+                        Text($0)
+                    }
+                }
+                .onChange(of: paymentMethod) { _ in
+                    autoSave()
+                }
+                TextField("Total Amount", text: Binding(
+                    get: { totalAmount },
+                    set: {
+                        totalAmount = $0
+                        if let value = Double($0) {
+                            project.totalAmount = value
+                        }
+                        autoSave()
+                    }
+                ))
+                .keyboardType(.decimalPad)
+                .placeholder(when: totalAmount.isEmpty) {
+                    Text("Total Amount").foregroundColor(.gray)
+                }
                 VStack {
                     Text("Project Progress")
                     Slider(value: $project.progress, in: 0...1, step: 0.01)
@@ -87,6 +112,8 @@ struct EditProjectView: View {
                 selectedLanguages = project.languagesUsed.components(separatedBy: ", ").filter { !$0.isEmpty }
                 projectType = project.projectType
                 githubRepo = project.githubRepo
+                totalAmount = project.totalAmount == 0 ? "" : "\(project.totalAmount)"
+                paymentMethod = project.paymentMethod
             }
         }
     }
@@ -100,6 +127,7 @@ struct EditProjectView: View {
         project.languagesUsed = selectedLanguages.joined(separator: ", ").trimmingCharacters(in: CharacterSet(charactersIn: ", "))
         project.projectType = projectType
         project.githubRepo = githubRepo
+        project.paymentMethod = paymentMethod
         lastEditedDate = Date()
         saveProjectToStorage()
     }

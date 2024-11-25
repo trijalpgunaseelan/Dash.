@@ -64,12 +64,14 @@ struct ProjectView: View {
     }
 
     private var emptyProjectsView: some View {
-        Spacer()
-        Text("No Projects Yet")
-            .font(.title2)
-            .foregroundColor(.gray)
-            .padding()
-        return Spacer()
+        VStack {
+            Spacer()
+            Text("No Projects Yet")
+                .font(.title2)
+                .foregroundColor(.gray)
+                .padding()
+            Spacer()
+        }
     }
 
     private var projectsList: some View {
