@@ -59,25 +59,11 @@ struct AddProjectView: View {
                 .onChange(of: project.paymentMethod) { _ in
                     autoSave()
                 }
-                TextField("Total Amount", text: Binding(
-                    get: {
-                        project.totalAmount == 0 ? "" : "\(project.totalAmount)"
-                    },
-                    set: { newValue in
-                        if let value = Double(newValue) {
-                            project.totalAmount = value
-                        } else {
-                            project.totalAmount = 0
-                        }
+                TextField("Total Amount", value: $project.totalAmount, formatter: customNumberFormatter())
+                    .keyboardType(.decimalPad)
+                    .onChange(of: project.totalAmount) { _ in
+                        autoSave()
                     }
-                ))
-                .keyboardType(.decimalPad)
-                .placeholder(when: project.totalAmount == 0) {
-                    Text("Total Amount").foregroundColor(.gray)
-                }
-                .onChange(of: project.totalAmount) { _ in
-                    autoSave()
-                }
             }
             .navigationBarTitle("New Project", displayMode: .inline)
             .alert(isPresented: $showAlert) {
@@ -120,6 +106,12 @@ struct AddProjectView: View {
         if let data = try? JSONEncoder().encode(projects) {
             UserDefaults.standard.set(data, forKey: "projects")
         }
+    }
+    
+    private func customNumberFormatter() -> NumberFormatter {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .none
+        return formatter
     }
 }
 

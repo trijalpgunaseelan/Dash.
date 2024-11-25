@@ -20,7 +20,7 @@ struct ProjectView: View {
             }
             .background(navigationLink)
             .overlay(addButton)
-            .onAppear(perform: loadProjects) // Load projects when the view appears
+            .onAppear(perform: loadProjects)
         }
     }
 
@@ -118,7 +118,7 @@ struct ProjectView: View {
                             saveProjectsToStorage()
                         }
                     }
-                ))
+                ), projects: $projects)
             },
             isActive: Binding(
                 get: { selectedProject != nil },

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ProjectDetailView: View {
     @Binding var project: Project
+    @Binding var projects: [Project] // Receive projects array
     @State private var showingEditProject = false
     @State private var lastEditedDate: Date? = nil
     @State private var isPaymentDone: Bool = false
@@ -147,13 +148,18 @@ struct ProjectDetailView: View {
         let calendar = Calendar.current
         let currentDate = Date()
         let components = calendar.dateComponents([.day], from: currentDate, to: project.endDate)
-        return components.day ?? 0
+        return max(0, components.day ?? 0)
     }
-    
+
     private func autoSave() {
-        if let data = try? JSONEncoder().encode(project) {
+        if let index = projects.firstIndex(where: { $0.id == project.id }) {
+            projects[index] = project
+        } else {
+            projects.append(project)
+        }
+        
+        if let data = try? JSONEncoder().encode(projects) {
             UserDefaults.standard.set(data, forKey: "projects")
         }
     }
 }
-
