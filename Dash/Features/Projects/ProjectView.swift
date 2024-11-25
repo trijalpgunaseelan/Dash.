@@ -7,24 +7,6 @@
 
 import SwiftUI
 
-struct DetailRow: View {
-    var title: String
-    var value: String
-
-    var body: some View {
-        HStack {
-            Text(title)
-                .font(.subheadline)
-                .bold()
-            Spacer()
-            Text(value)
-                .font(.subheadline)
-                .foregroundColor(.gray)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
 struct ProjectView: View {
     @State private var projects: [Project] = []
     @State private var showingAddProject = false
@@ -38,7 +20,7 @@ struct ProjectView: View {
             }
             .background(navigationLink)
             .overlay(addButton)
-            .onAppear(perform: loadProjects)
+            .onAppear(perform: loadProjects) // Load projects when the view appears
         }
     }
 
@@ -133,6 +115,7 @@ struct ProjectView: View {
                     set: { newValue in
                         if let index = projects.firstIndex(where: { $0.id == project.id }) {
                             projects[index] = newValue
+                            saveProjectsToStorage()
                         }
                     }
                 ))
