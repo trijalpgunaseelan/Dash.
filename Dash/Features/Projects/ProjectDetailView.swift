@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ProjectDetailView: View {
     @Binding var project: Project
-    @Binding var projects: [Project] // Receive projects array
+    @Binding var projects: [Project] 
     @State private var showingEditProject = false
     @State private var lastEditedDate: Date? = nil
     @State private var isPaymentDone: Bool = false
@@ -21,16 +21,18 @@ struct ProjectDetailView: View {
                 HStack {
                     Spacer()
                     Text(project.name)
-                        .font(.custom("Chewy-Regular", size: 28))
-                        .fontWeight(.bold)
+                        .font(.system(size: 28, weight: .semibold))
+                        .fontWeight(.semibold)
                         .foregroundColor(.purple)
+                        .padding(.top, -20)
+                        .padding(.bottom, 30)
                     Spacer()
                     Button(action: {
                         showingEditProject = true
                     }) {
                         Image(systemName: "pencil.circle.fill")
                             .font(.title2)
-                            .foregroundColor(.purple)
+                            .foregroundColor(.secondary)
                     }
                 }
                 .padding(.top)

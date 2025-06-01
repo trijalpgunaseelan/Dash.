@@ -18,7 +18,7 @@ struct PINLockView: View {
             Spacer()
 
             Text("Enter PIN")
-                .font(.custom("Chewy-Regular", size: 40))
+                .font(.custom("HeeboBoldFont", size: 40))
                 .italic()
                 .foregroundColor(.purple)
                 .padding(.bottom, 20)
@@ -66,7 +66,7 @@ struct PINLockView: View {
     }
 
     private func verifyPin() {
-        let correctPIN = "000000"
+        let correctPIN = "252525"
 
         if pin == correctPIN {
             isAnimating = true

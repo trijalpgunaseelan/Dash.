@@ -7,15 +7,15 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "75DBFE0D-10B8-4F8C-93A6-3FA0AAC56F5D"
+            uuid = "7FD705B2-5C25-42A9-88A3-5288EC829E55"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "Dash/Features/Github/GitHubService.swift"
+            filePath = "Dash/Features/DailyPlanner/AddTaskView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "8"
-            endingLineNumber = "8"
+            startingLineNumber = "7"
+            endingLineNumber = "7"
             landmarkName = "unknown"
             landmarkType = "0">
          </BreakpointContent>

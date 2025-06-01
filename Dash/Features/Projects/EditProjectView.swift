@@ -102,7 +102,7 @@ struct EditProjectView: View {
                         .foregroundColor(.gray)
                 }
             }
-            .navigationBarTitle(Text("Edit Project").font(.custom("Chewy-Regular", size: 18)), displayMode: .inline)
+            .navigationBarTitle(Text("Edit Project").font(.system(size: 26 )), displayMode: .inline)
             .onAppear {
                 name = project.name
                 developer = project.developer

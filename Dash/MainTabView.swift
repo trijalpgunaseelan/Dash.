@@ -28,13 +28,12 @@ struct MainTabView: View {
                         }
                     }
                 
-                NewsView()
+                DailyPlannerView()
                     .tabItem {
                         VStack {
-                            Image("newsIcon")
-                                .renderingMode(.template)
+                            Image(systemName: "calendar")
                                 .foregroundColor(.purple)
-                            Text("News")
+                            Text("Planner")
                         }
                     }
             
