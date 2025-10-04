@@ -1,4 +1,4 @@
-****Dash. – iOS Productivity & Project Management App****
+# Dash. – iOS Productivity & Project Management App
 
 Open-Source Swift Project | Face ID | GitHub Integration | Daily Planner | Notes | Projects Module
 
@@ -46,16 +46,16 @@ Diagram Placeholder: You can replace this code block with a visual diagram (e.g.
 ⸻
 
 **Installation**
-	1.	Clone the repository:
-
+1.	Clone the repository:
+```
 git clone https://github.com/trijalpgunaseelan/Dash.git
-
-	2.	Open in Xcode (14+)
-	3.	Install dependencies (if using CocoaPods or Swift Package Manager)
-
+```
+2.	Open in Xcode (14+)
+3.	Install dependencies (if using CocoaPods or Swift Package Manager)
+```
 pod install
-
-	4.	Build & Run using Cmd + R.
+```
+4.	Build & Run using Cmd + R.
 
 ⸻
 
@@ -68,15 +68,19 @@ Dash is open-source, and contributions are encouraged! You can help by:
 	•	Suggesting AI or collaboration features
 
 Steps to Contribute:
-
 # Fork the repository
+```
 git checkout -b feature/YourFeature
+```
 # Make changes and commit
+```
 git commit -m "Add new feature"
+```
 # Push changes
+```
 git push origin feature/YourFeature
+```
 # Create a Pull Request
-
 
 ⸻
 
@@ -85,12 +89,6 @@ git push origin feature/YourFeature
 	•	Multi-device sync via iCloud or Firebase
 	•	Team collaboration features (shared projects, task assignments)
 	•	Advanced analytics for productivity & project tracking
-
-⸻
-
-**License**
-
-MIT License – see LICENSE for details.
 
 ⸻
 
