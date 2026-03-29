@@ -5,7 +5,7 @@
 //  Created by Trijal Gunaseelan on 12/1/24.
 //
 
-import SwiftUICore
+import SwiftUI
 
 struct HeaderView: View {
     let title: String
