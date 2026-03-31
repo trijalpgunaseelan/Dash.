@@ -6,10 +6,10 @@
 //
 
 import AuthenticationServices
-import CryptoKit
 import Foundation
 import Security
 import UIKit
+import UserNotifications
 
 @MainActor
 final class GitHubAuthManager: ObservableObject {
@@ -17,14 +17,16 @@ final class GitHubAuthManager: ObservableObject {
     @Published private(set) var isAuthenticated = false
     @Published private(set) var user: GitHubUser?
     @Published private(set) var repositories: [Repository] = []
+    @Published var notifications: [GitHubNotification] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
     private enum OAuthConfig {
-        static let clientID = "Ov23liSkzlTYDikZJmPc"
+        static let clientID = "Ov23lijDapXSWmO4RsVv"
+        static let clientSecret = "5202f89a433c7f4f546dd4273ab3e399d2e3a714"
         static let redirectURI = "dash://github-callback"
         static let callbackScheme = "dash"
-        static let scopes = ["read:user", "repo"]
+        static let scopes = ["read:user", "repo", "notifications"]
     }
 
     private let keychain = KeychainHelper()
@@ -44,6 +46,7 @@ final class GitHubAuthManager: ObservableObject {
         do {
             try await fetchUserProfile()
             try await fetchRepositories()
+            try await fetchNotifications()
             errorMessage = nil
         } catch {
             await logoutFromGitHub()
@@ -64,10 +67,12 @@ final class GitHubAuthManager: ObservableObject {
                 throw APIServiceError.oauthError(message: "Missing GitHub client ID configuration.")
             }
 
+            guard !OAuthConfig.clientSecret.isEmpty else {
+                throw APIServiceError.oauthError(message: "Missing GitHub client secret configuration.")
+            }
+
             let state = UUID().uuidString
-            let codeVerifier = Self.generateCodeVerifier()
-            let codeChallenge = Self.generateCodeChallenge(from: codeVerifier)
-            let authorizationURL = try buildAuthorizationURL(state: state, codeChallenge: codeChallenge)
+            let authorizationURL = try buildAuthorizationURL(state: state)
             print("GitHub OAuth URL: \(authorizationURL.absoluteString)")
 
             let callbackURL = try await startWebAuthentication(
@@ -93,9 +98,9 @@ final class GitHubAuthManager: ObservableObject {
 
             let token = try await APIService.exchangeAuthorizationCodeForToken(
                 code: code,
-                codeVerifier: codeVerifier,
                 redirectURI: OAuthConfig.redirectURI,
-                clientID: OAuthConfig.clientID
+                clientID: OAuthConfig.clientID,
+                clientSecret: OAuthConfig.clientSecret
             )
 
             let isSaved = keychain.save(service: tokenKey, account: tokenKey, value: token)
@@ -108,6 +113,7 @@ final class GitHubAuthManager: ObservableObject {
 
             try await fetchUserProfile()
             try await fetchRepositories()
+            try await fetchNotifications()
             errorMessage = nil
         } catch {
             await logoutFromGitHub()
@@ -117,13 +123,32 @@ final class GitHubAuthManager: ObservableObject {
 
     func loadAuthenticatedDataIfNeeded() async {
         guard isAuthenticated else { return }
-        if user != nil && !repositories.isEmpty { return }
 
         do {
-            try await fetchUserProfile()
-            try await fetchRepositories()
+            if user == nil {
+                try await fetchUserProfile()
+            }
+            if repositories.isEmpty {
+                try await fetchRepositories()
+            }
+            try await fetchNotifications()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func fetchNotifications() async throws {
+        guard let token = accessToken else {
+            throw APIServiceError.oauthError(message: "Missing access token.")
+        }
+
+        let previousUnreadCount = notifications.filter { $0.unread }.count
+        let fetchedNotifications = try await APIService.fetchNotifications(accessToken: token)
+        notifications = fetchedNotifications
+
+        let newUnreadCount = fetchedNotifications.filter { $0.unread }.count
+        if newUnreadCount > previousUnreadCount {
+            await sendLocalNotificationForNewGitHubActivity(newCount: newUnreadCount - previousUnreadCount)
         }
     }
 
@@ -136,6 +161,7 @@ final class GitHubAuthManager: ObservableObject {
         isAuthenticated = false
         user = nil
         repositories = []
+        notifications = []
         errorMessage = nil
     }
 
@@ -147,6 +173,7 @@ final class GitHubAuthManager: ObservableObject {
         isAuthenticated = false
         user = nil
         repositories = []
+        notifications = []
     }
 
     private func fetchUserProfile() async throws {
@@ -165,7 +192,7 @@ final class GitHubAuthManager: ObservableObject {
         repositories = try await APIService.fetchRepositories(accessToken: token)
     }
 
-    private func buildAuthorizationURL(state: String, codeChallenge: String) throws -> URL {
+    private func buildAuthorizationURL(state: String) throws -> URL {
         guard var components = URLComponents(string: "https://github.com/login/oauth/authorize") else {
             throw APIServiceError.invalidURL
         }
@@ -174,9 +201,7 @@ final class GitHubAuthManager: ObservableObject {
             URLQueryItem(name: "client_id", value: OAuthConfig.clientID),
             URLQueryItem(name: "redirect_uri", value: OAuthConfig.redirectURI),
             URLQueryItem(name: "scope", value: OAuthConfig.scopes.joined(separator: " ")),
-            URLQueryItem(name: "state", value: state),
-            URLQueryItem(name: "code_challenge", value: codeChallenge),
-            URLQueryItem(name: "code_challenge_method", value: "S256")
+            URLQueryItem(name: "state", value: state)
         ]
 
         guard let url = components.url else {
@@ -212,29 +237,30 @@ final class GitHubAuthManager: ObservableObject {
         }
     }
 
-    private static func generateCodeVerifier() -> String {
-        let charset = Array("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~")
-        let length = 64
-        var result = ""
-        result.reserveCapacity(length)
+    private func sendLocalNotificationForNewGitHubActivity(newCount: Int) async {
+        let center = UNUserNotificationCenter.current()
 
-        for _ in 0..<length {
-            if let randomCharacter = charset.randomElement() {
-                result.append(randomCharacter)
+        do {
+            let settings = await center.notificationSettings()
+            if settings.authorizationStatus == .notDetermined {
+                _ = try await center.requestAuthorization(options: [.alert, .sound, .badge])
             }
+
+            let content = UNMutableNotificationContent()
+            content.title = "GitHub Updates"
+            content.body = "You have \(newCount) new GitHub notification\(newCount == 1 ? "" : "s")."
+            content.sound = .default
+
+            let request = UNNotificationRequest(
+                identifier: UUID().uuidString,
+                content: content,
+                trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+            )
+
+            try await center.add(request)
+        } catch {
+            // Ignore local notification errors to avoid blocking GitHub data flow.
         }
-
-        return result
-    }
-
-    private static func generateCodeChallenge(from verifier: String) -> String {
-        let data = Data(verifier.utf8)
-        let hash = SHA256.hash(data: data)
-        return Data(hash)
-            .base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "=", with: "")
     }
 }
 

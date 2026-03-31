@@ -14,6 +14,7 @@ struct GitHubView: View {
     @State private var hasRestoredSession = false
     @State private var position: CGSize = .zero
     @GestureState private var dragTranslation: CGSize = .zero
+    @State private var showNotifications = false
 
     enum SortOption: String, CaseIterable, Identifiable {
         case newest = "Newest"
@@ -45,6 +46,10 @@ struct GitHubView: View {
         }
     }
 
+    private var unreadCount: Int {
+        authManager.notifications.filter { $0.unread }.count
+    }
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -71,7 +76,21 @@ struct GitHubView: View {
             .navigationTitle("GitHub")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button {
+                        showNotifications = true
+                    } label: {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "bell")
+                            if unreadCount > 0 {
+                                Circle()
+                                    .fill(Color.red)
+                                    .frame(width: 8, height: 8)
+                            }
+                        }
+                    }
+                    .disabled(!authManager.isAuthenticated)
+
                     Menu {
                         Button("Logout from GitHub") {
                             Swift.Task {
@@ -82,6 +101,13 @@ struct GitHubView: View {
                         Image(systemName: "ellipsis")
                     }
                     .disabled(!authManager.isAuthenticated)
+                }
+            }
+            .sheet(isPresented: $showNotifications) {
+                NotificationsView(notifications: authManager.notifications) {
+                    Swift.Task {
+                        try? await authManager.fetchNotifications()
+                    }
                 }
             }
             .task {
@@ -254,4 +280,3 @@ struct GitHubView: View {
         return formatter.string(from: date)
     }
 }
-
