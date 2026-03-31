@@ -64,6 +64,31 @@ struct Repository: Identifiable, Decodable {
     }
 }
 
+struct GitHubNotification: Identifiable, Decodable {
+    let id = UUID()
+    let reason: String
+    let unread: Bool
+    let updatedAt: String
+    let subject: Subject
+
+    struct Subject: Decodable {
+        let title: String
+        let url: String?
+        let type: String
+    }
+
+    var deduplicationKey: String {
+        "\(reason)|\(updatedAt)|\(subject.title)|\(subject.type)"
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case reason
+        case unread
+        case updatedAt = "updated_at"
+        case subject
+    }
+}
+
 struct APIService {
     private struct OAuthTokenResponse: Decodable {
         let accessToken: String?
@@ -83,9 +108,9 @@ struct APIService {
 
     static func exchangeAuthorizationCodeForToken(
         code: String,
-        codeVerifier: String,
         redirectURI: String,
-        clientID: String
+        clientID: String,
+        clientSecret: String
     ) async throws -> String {
         guard let url = URL(string: "https://github.com/login/oauth/access_token") else {
             throw APIServiceError.invalidURL
@@ -96,7 +121,7 @@ struct APIService {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
-        let body = "client_id=\(percentEncode(clientID))&code=\(percentEncode(code))&redirect_uri=\(percentEncode(redirectURI))&code_verifier=\(percentEncode(codeVerifier))"
+        let body = "client_id=\(percentEncode(clientID))&client_secret=\(percentEncode(clientSecret))&code=\(percentEncode(code))&redirect_uri=\(percentEncode(redirectURI))"
         request.httpBody = body.data(using: .utf8)
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -151,6 +176,22 @@ struct APIService {
 
         do {
             return try decoder.decode([Repository].self, from: data)
+        } catch {
+            throw APIServiceError.decodingError
+        }
+    }
+
+    static func fetchNotifications(accessToken: String) async throws -> [GitHubNotification] {
+        guard let url = URL(string: "https://api.github.com/notifications") else {
+            throw APIServiceError.invalidURL
+        }
+
+        let request = makeAuthenticatedRequest(url: url, accessToken: accessToken)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateHTTPResponse(response)
+
+        do {
+            return try JSONDecoder().decode([GitHubNotification].self, from: data)
         } catch {
             throw APIServiceError.decodingError
         }
