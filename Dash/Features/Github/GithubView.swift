@@ -73,10 +73,9 @@ struct GitHubView: View {
                 .padding(.top, 70)
                 .padding(.trailing, 16)
             }
-            .navigationTitle("GitHub")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
                         showNotifications = true
                     } label: {
@@ -93,7 +92,8 @@ struct GitHubView: View {
 
                     Menu {
                         Button("Logout from GitHub") {
-                            Swift.Task {
+                            // FIX: Qualify with _Concurrency to avoid shadowing by Dash.Task model
+                            _Concurrency.Task {
                                 await authManager.logoutFromGitHub()
                             }
                         }
@@ -104,11 +104,15 @@ struct GitHubView: View {
                 }
             }
             .sheet(isPresented: $showNotifications) {
-                NotificationsView(notifications: authManager.notifications) {
-                    Swift.Task {
-                        try? await authManager.fetchNotifications()
+                NotificationsView(
+                    notifications: authManager.notifications,
+                    onRefresh: {
+                        // FIX: Qualify with _Concurrency to avoid shadowing by Dash.Task model
+                        _Concurrency.Task {
+                            try? await authManager.fetchNotifications()
+                        }
                     }
-                }
+                )
             }
             .task {
                 guard !hasRestoredSession else { return }
@@ -149,7 +153,6 @@ struct GitHubView: View {
 
     private var authenticatedContent: some View {
         VStack(spacing: 0) {
-            headerSection
 
             if authManager.isLoading && sortedRepositories.isEmpty {
                 ProgressView("Loading repositories...")
@@ -215,57 +218,6 @@ struct GitHubView: View {
                 .listStyle(PlainListStyle())
             }
         }
-    }
-
-    private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("GitHub Repos")
-                .font(.system(size: 26, weight: .bold))
-
-            if let user = authManager.user {
-                HStack(spacing: 10) {
-                    AsyncImage(url: URL(string: user.avatarURL ?? "")) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
-                        Circle()
-                            .fill(Color(UIColor.systemGray5))
-                    }
-                    .frame(width: 36, height: 36)
-                    .clipShape(Circle())
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(user.name ?? user.login)
-                            .font(.subheadline.weight(.semibold))
-                        Text("@\(user.login)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(SortOption.allCases) { option in
-                        Text(option.rawValue)
-                            .font(.subheadline)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(sortOption == option ? Color.purple : Color(UIColor.systemGray5))
-                            )
-                            .foregroundColor(sortOption == option ? .white : .primary)
-                            .onTapGesture {
-                                sortOption = option
-                            }
-                    }
-                }
-                .padding(.horizontal, 4)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .padding(.bottom, 5)
     }
 
     private func openGitHubApp() {
