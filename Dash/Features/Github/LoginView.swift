@@ -26,11 +26,11 @@ struct LoginView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
 
-            Button {
-                Swift.Task {
+            Button(action: {
+                _Concurrency.Task {
                     await authManager.signIn()
                 }
-            } label: {
+            }) {
                 HStack(spacing: 8) {
                     if authManager.isLoading {
                         ProgressView()
@@ -42,7 +42,7 @@ struct LoginView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .background(Color.black)
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .disabled(authManager.isLoading)
@@ -57,3 +57,4 @@ struct LoginView: View {
         .padding()
     }
 }
+

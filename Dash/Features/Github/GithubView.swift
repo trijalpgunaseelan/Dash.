@@ -74,19 +74,19 @@ struct GitHubView: View {
                 .padding(.top, 70)
                 .padding(.trailing, 16)
             }
-            .navigationTitle("GitHub")
             .navigationBarTitleDisplayMode(.inline)
-
-            .toolbar {
-                toolbarContent
-            }
+            .toolbar { toolbarContent }
 
             .sheet(isPresented: $showNotifications) {
-                NotificationsView(notifications: authManager.notifications) {
-                    _Concurrency.Task {
-                        try? await authManager.fetchNotifications()
+                NotificationsView(
+                    notifications: authManager.notifications,
+                    onRefresh: {
+                        // FIX: Qualify with _Concurrency to avoid shadowing by Dash.Task model
+                        _Concurrency.Task {
+                            try? await authManager.fetchNotifications()
+                        }
                     }
-                }
+                )
             }
 
             .task {
@@ -161,7 +161,6 @@ struct GitHubView: View {
 
     private var authenticatedContent: some View {
         VStack(spacing: 0) {
-            headerSection
 
             if authManager.isLoading && sortedRepositories.isEmpty {
                 ProgressView("Loading repositories...")
