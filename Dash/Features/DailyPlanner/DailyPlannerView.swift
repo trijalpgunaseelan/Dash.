@@ -3,7 +3,8 @@
 //  Dash
 //
 //  Created by Trijal Gunaseelan on 5/30/25.
-//
+//  Edited by Dhakshika on 2/4/26
+
 
 import SwiftUI
 
@@ -41,13 +42,18 @@ struct DailyPlannerView: View {
     var body: some View {
         NavigationView {
             ZStack {
+
                 VStack(spacing: 0) {
+
                     VStack(alignment: .leading, spacing: 8) {
+
                         Text("Daily Planner")
                             .font(.system(size: 26, weight: .bold))
 
                         ScrollView(.horizontal, showsIndicators: false) {
+
                             HStack(spacing: 8) {
+
                                 ForEach(SortOption.allCases) { option in
                                     Text(option.rawValue)
                                         .font(.subheadline)
@@ -71,19 +77,29 @@ struct DailyPlannerView: View {
                     .padding(.bottom, 5)
 
                     if sortedTasks.isEmpty {
+
                         Spacer()
+
                         Text("No tasks yet.")
                             .font(.title3)
                             .foregroundColor(.gray)
+
                         Spacer()
+
                     } else {
+
                         List {
+
                             ForEach(sortedTasks) { task in
+
                                 VStack {
+
                                     Button {
                                         selectedTask = task
                                     } label: {
+
                                         HStack(spacing: 12) {
+
                                             Button(action: {
                                                 var updated = task
                                                 updated.isCompleted.toggle()
@@ -95,6 +111,7 @@ struct DailyPlannerView: View {
                                             .buttonStyle(PlainButtonStyle())
 
                                             VStack(alignment: .leading, spacing: 4) {
+
                                                 Text(task.title)
                                                     .font(.headline)
                                                     .lineLimit(1)
@@ -116,6 +133,7 @@ struct DailyPlannerView: View {
                                         )
                                     }
                                     .buttonStyle(PlainButtonStyle())
+
                                     .onTapGesture(count: 2) {
                                         var updated = task
                                         updated.isCompleted.toggle()
@@ -127,6 +145,7 @@ struct DailyPlannerView: View {
                                 .padding(.horizontal, 8)
                                 .listRowSeparator(.hidden)
                             }
+
                             .onDelete { offsets in
                                 for index in offsets {
                                     let task = sortedTasks[index]
@@ -139,12 +158,17 @@ struct DailyPlannerView: View {
                 }
 
                 VStack {
+
                     Spacer()
+
                     HStack {
+
                         Spacer()
+
                         Button {
                             showingAddTask = true
                         } label: {
+
                             Image(systemName: "plus")
                                 .font(.system(size: 24))
                                 .foregroundColor(.white)
@@ -157,9 +181,11 @@ struct DailyPlannerView: View {
                     }
                 }
             }
+
             .sheet(isPresented: $showingAddTask) {
                 AddTaskView(viewModel: viewModel)
             }
+
             .background(
                 NavigationLink(
                     destination: selectedTask.map {
@@ -171,6 +197,12 @@ struct DailyPlannerView: View {
                     )
                 ) { EmptyView() }
             )
+
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    AppMenuButton()
+                }
+            }
         }
     }
 }

@@ -3,7 +3,10 @@
 //  Dash
 //
 //  Created by Trijal Gunaseelan on 11/23/24.
+//  Edited by Dhaskhika on 2/4/26
 //
+
+
 
 import SwiftUI
 
@@ -150,6 +153,13 @@ struct NotesView: View {
                         }
                     )
                 ) { EmptyView() }
+            }
+
+            // ONLY ADDITION
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    AppMenuButton()
+                }
             }
         }
     }

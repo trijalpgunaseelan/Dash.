@@ -2,8 +2,8 @@
 //  GithubView.swift
 //  Dash
 //
-//  Created by Trijal Gunaseelan on 11/20/24.
-//
+//  Created by Trijal Gunaseelan on 5/30/25.
+//  Edited by Dhakshika on 2/4/26
 
 import SwiftUI
 
@@ -15,6 +15,7 @@ struct GitHubView: View {
     @State private var position: CGSize = .zero
     @GestureState private var dragTranslation: CGSize = .zero
     @State private var showNotifications = false
+    @State private var showMenu = false
 
     enum SortOption: String, CaseIterable, Identifiable {
         case newest = "Newest"
@@ -75,46 +76,25 @@ struct GitHubView: View {
             }
             .navigationTitle("GitHub")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    Button {
-                        showNotifications = true
-                    } label: {
-                        ZStack(alignment: .topTrailing) {
-                            Image(systemName: "bell")
-                            if unreadCount > 0 {
-                                Circle()
-                                    .fill(Color.red)
-                                    .frame(width: 8, height: 8)
-                            }
-                        }
-                    }
-                    .disabled(!authManager.isAuthenticated)
 
-                    Menu {
-                        Button("Logout from GitHub") {
-                            Swift.Task {
-                                await authManager.logoutFromGitHub()
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                    }
-                    .disabled(!authManager.isAuthenticated)
-                }
+            .toolbar {
+                toolbarContent
             }
+
             .sheet(isPresented: $showNotifications) {
                 NotificationsView(notifications: authManager.notifications) {
-                    Swift.Task {
+                    _Concurrency.Task {
                         try? await authManager.fetchNotifications()
                     }
                 }
             }
+
             .task {
                 guard !hasRestoredSession else { return }
                 hasRestoredSession = true
                 await authManager.restoreSession()
             }
+
             .task(id: authManager.isAuthenticated) {
                 guard hasRestoredSession, authManager.isAuthenticated else { return }
                 await authManager.loadAuthenticatedDataIfNeeded()
@@ -147,6 +127,38 @@ struct GitHubView: View {
             }
     }
 
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .navigationBarLeading) {
+            Button {
+                showNotifications = true
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "bell")
+                        .font(.system(size: 18, weight: .medium))
+
+                    if unreadCount > 0 {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 8, height: 8)
+                    }
+                }
+            }
+            .disabled(!authManager.isAuthenticated)
+        }
+
+        ToolbarItem(placement: .navigationBarTrailing) {
+            AppMenuButton(
+                showLogout: true,
+                logoutAction: {
+                    _Concurrency.Task {
+                        await authManager.logoutFromGitHub()
+                    }
+                }
+            )
+        }
+    }
+
     private var authenticatedContent: some View {
         VStack(spacing: 0) {
             headerSection
@@ -171,6 +183,7 @@ struct GitHubView: View {
                 List {
                     ForEach(sortedRepositories) { repo in
                         VStack(alignment: .leading, spacing: 4) {
+
                             Text(repo.name)
                                 .font(.headline)
                                 .lineLimit(1)
@@ -199,6 +212,7 @@ struct GitHubView: View {
                             } label: {
                                 HStack {
                                     Spacer()
+
                                     Label("Open in GitHub", systemImage: "arrow.up.right.square")
                                         .font(.caption)
                                         .foregroundColor(.purple)
@@ -206,7 +220,10 @@ struct GitHubView: View {
                             }
                         }
                         .padding()
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(UIColor.systemGray6)))
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(UIColor.systemGray6))
+                        )
                         .listRowInsets(EdgeInsets())
                         .padding(.vertical, 4)
                         .listRowSeparator(.hidden)
@@ -219,11 +236,14 @@ struct GitHubView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 10) {
+
             Text("GitHub Repos")
                 .font(.system(size: 26, weight: .bold))
 
             if let user = authManager.user {
+
                 HStack(spacing: 10) {
+
                     AsyncImage(url: URL(string: user.avatarURL ?? "")) { image in
                         image.resizable().scaledToFill()
                     } placeholder: {
@@ -236,6 +256,7 @@ struct GitHubView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(user.name ?? user.login)
                             .font(.subheadline.weight(.semibold))
+
                         Text("@\(user.login)")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -244,7 +265,9 @@ struct GitHubView: View {
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
+
                 HStack(spacing: 8) {
+
                     ForEach(SortOption.allCases) { option in
                         Text(option.rawValue)
                             .font(.subheadline)
@@ -270,7 +293,7 @@ struct GitHubView: View {
 
     private func openGitHubApp() {
         if let url = URL(string: "github://") {
-            UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            UIApplication.shared.open(url)
         }
     }
 
