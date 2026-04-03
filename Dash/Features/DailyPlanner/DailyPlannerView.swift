@@ -1,10 +1,5 @@
-//
 //  DailyPlannerView.swift
 //  Dash
-//
-//  Created by Trijal Gunaseelan on 5/30/25.
-//  Edited by Dhakshika
-
 
 import SwiftUI
 
@@ -17,6 +12,7 @@ struct DailyPlannerView: View {
 
     @State private var filter: Filter = .all
     @State private var showCalendar = false
+    @State private var focusMode = false
 
     enum Filter: String, CaseIterable, Identifiable {
         case all = "All"
@@ -27,52 +23,77 @@ struct DailyPlannerView: View {
         var id: String { rawValue }
     }
 
-    // MARK: Filtered Tasks
-
     var filteredTasks: [Task] {
+
+        var tasks: [Task]
 
         switch filter {
 
         case .all:
-            return viewModel.tasks
+            tasks = viewModel.tasks
 
         case .today:
-            return viewModel.tasks.filter {
+            tasks = viewModel.tasks.filter {
                 Calendar.current.isDateInToday($0.dueDate)
             }
 
         case .upcoming:
-            return viewModel.tasks.filter {
+            tasks = viewModel.tasks.filter {
                 $0.dueDate > Date()
             }
 
         case .completed:
-            return viewModel.tasks.filter {
+            tasks = viewModel.tasks.filter {
                 $0.isCompleted
             }
         }
-    }
 
-    // MARK: Progress
+        if focusMode {
+            tasks = tasks.filter {
+                Calendar.current.isDateInToday($0.dueDate)
+            }
+        }
+
+        return tasks.sorted {
+            if $0.isCompleted == $1.isCompleted {
+                return $0.dueDate < $1.dueDate
+            }
+            return !$0.isCompleted
+        }
+    }
 
     var progress: Double {
 
         guard !viewModel.tasks.isEmpty else { return 0 }
 
         let completed = viewModel.tasks.filter { $0.isCompleted }.count
-
         return Double(completed) / Double(viewModel.tasks.count)
     }
 
-    // MARK: Productivity Insights
+    var streak: Int {
 
-    var completedToday: Int {
-        viewModel.tasks.filter {
-            $0.isCompleted && Calendar.current.isDateInToday($0.dueDate)
-        }.count
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        var streakCount = 0
+
+        for offset in 0..<365 {
+
+            guard let date = calendar.date(byAdding: .day, value: -offset, to: today) else { break }
+
+            let completed = viewModel.tasks.contains {
+                $0.isCompleted && calendar.isDate($0.dueDate, inSameDayAs: date)
+            }
+
+            if completed {
+                streakCount += 1
+            } else {
+                break
+            }
+        }
+
+        return streakCount
     }
-
-    // MARK: UI
 
     var body: some View {
 
@@ -80,31 +101,67 @@ struct DailyPlannerView: View {
 
             ZStack {
 
+                Color.black.ignoresSafeArea()
+
                 VStack(spacing: 0) {
 
-                    // MARK: Progress Dashboard
+                    // MARK: PROGRESS
 
                     VStack(alignment: .leading, spacing: 10) {
 
                         Text("Today's Progress")
-                            .font(.subheadline)
+                            .font(.subheadline.weight(.bold))
                             .foregroundColor(.secondary)
 
                         ProgressView(value: progress)
                             .tint(.purple)
+                            .scaleEffect(y: 1.4)
 
                         Text("\(viewModel.tasks.filter{$0.isCompleted}.count) of \(viewModel.tasks.count) tasks completed")
                             .font(.caption)
                             .foregroundColor(.secondary)
 
-                        Text("🔥 \(completedToday) completed today")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 10)
+                        HStack {
 
-                    // MARK: Filters
+                            HStack(spacing: 6) {
+                                Image(systemName: "bolt.fill")
+                                    .foregroundColor(.purple)
+
+                                Text("\(streak) day streak")
+                                    .font(.caption)
+                            }
+
+                            Spacer()
+
+                            Button {
+
+                                withAnimation {
+                                    focusMode.toggle()
+                                }
+
+                            } label: {
+
+                                HStack(spacing: 6) {
+                                    Image(systemName: "scope")
+                                    Text("Focus")
+                                }
+                                .font(.caption)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.purple.opacity(0.2))
+                                .cornerRadius(8)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.top, 12)
+                    .padding(.bottom, 12)
+
+                    Divider()
+                        .background(Color.white.opacity(0.15))
+                        .padding(.horizontal, 18)
+
+                    // MARK: FILTERS
 
                     ScrollView(.horizontal, showsIndicators: false) {
 
@@ -114,10 +171,10 @@ struct DailyPlannerView: View {
 
                                 Text(item.rawValue)
                                     .font(.subheadline)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 20)
+                                        Capsule()
                                             .fill(filter == item ? Color.purple : Color(UIColor.systemGray5))
                                     )
                                     .foregroundColor(filter == item ? .white : .primary)
@@ -129,15 +186,16 @@ struct DailyPlannerView: View {
                                     }
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
                     }
 
-                    // MARK: Toggle Calendar
+                    // MARK: CALENDAR
 
                     VStack(alignment: .leading, spacing: 12) {
 
                         HStack {
+
                             Text("Calendar")
                                 .font(.headline)
 
@@ -148,11 +206,11 @@ struct DailyPlannerView: View {
                                     showCalendar.toggle()
                                 }
                             } label: {
-                                Image(systemName: showCalendar ? "calendar.badge.minus" : "calendar")
+                                Image(systemName: "calendar")
                                     .foregroundColor(.purple)
                             }
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, 18)
 
                         if showCalendar {
 
@@ -165,7 +223,7 @@ struct DailyPlannerView: View {
                                         VStack(spacing: 6) {
 
                                             Text(dayLabel(date))
-                                                .font(.caption)
+                                                .font(.caption2)
                                                 .foregroundColor(.secondary)
 
                                             Text(dayNumber(date))
@@ -173,108 +231,77 @@ struct DailyPlannerView: View {
 
                                             Circle()
                                                 .fill(hasTask(date) ? Color.purple : Color.clear)
-                                                .frame(width: 6, height: 6)
+                                                .frame(width: 5, height: 5)
                                         }
-                                        .frame(width: 50, height: 60)
+                                        .frame(width: 52, height: 62)
                                         .background(
                                             RoundedRectangle(cornerRadius: 12)
-                                                .fill(
-                                                    Calendar.current.isDateInToday(date)
-                                                    ? Color.purple.opacity(0.2)
-                                                    : Color(UIColor.systemGray6)
-                                                )
+                                                .fill(Color(red: 0.15, green: 0.15, blue: 0.18))
                                         )
                                     }
                                 }
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, 18)
                             }
                         }
                     }
                     .padding(.top, 6)
-                    // MARK: Task List
+                    .padding(.bottom, 12)
 
-                    if filteredTasks.isEmpty {
+                    Divider()
+                        .background(Color.white.opacity(0.15))
+                        .padding(.horizontal, 18)
 
-                        Spacer()
+                    // MARK: TASK LIST
 
-                        VStack(spacing: 12) {
+                    List {
 
-                            Text("📅")
-                                .font(.system(size: 40))
+                        ForEach(filteredTasks) { task in
 
-                            Text("Your day is clear")
-                                .font(.title3)
-                                .fontWeight(.semibold)
+                            taskCard(task)
+                                .listRowInsets(EdgeInsets())
+                                .listRowSeparator(.hidden)
+                                .padding(.vertical, 8)
 
-                            Text("Tap + to add a task")
-                                .foregroundColor(.secondary)
-                        }
+                                .swipeActions(edge: .leading) {
 
-                        Spacer()
+                                    Button {
 
-                    } else {
+                                        var updated = task
+                                        updated.isCompleted.toggle()
 
-                        List {
-
-                            ForEach(filteredTasks) { task in
-
-                                taskCard(task)
-
-                                    .listRowInsets(EdgeInsets())
-                                    .padding(.vertical, 6)
-                                    .padding(.horizontal, 8)
-                                    .listRowSeparator(.hidden)
-
-                                    // Swipe Complete
-
-                                    .swipeActions(edge: .leading) {
-
-                                        Button {
-
-                                            var updated = task
-                                            updated.isCompleted.toggle()
-
-                                            withAnimation {
-                                                viewModel.addOrUpdate(updated)
-                                            }
-
-                                        } label: {
-                                            Label("Complete", systemImage: "checkmark")
+                                        withAnimation {
+                                            viewModel.addOrUpdate(updated)
                                         }
-                                        .tint(.green)
+
+                                    } label: {
+                                        Label("Complete", systemImage: "checkmark")
                                     }
+                                    .tint(.purple)
+                                }
 
-                                    // Swipe Delete
+                                .swipeActions {
 
-                                    .swipeActions(edge: .trailing) {
+                                    Button {
 
-                                        Button(role: .destructive) {
-
-                                            withAnimation {
-                                                viewModel.delete(task)
-                                            }
-
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
+                                        withAnimation {
+                                            viewModel.delete(task)
                                         }
+
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
                                     }
+                                    .tint(.purple)
+                                }
 
-                                    .onTapGesture {
-                                        selectedTask = task
-                                    }
-                            }
-
-                            // Drag to reorder
-
-                            .onMove { source, destination in
-                                viewModel.tasks.move(fromOffsets: source, toOffset: destination)
-                            }
+                                .onTapGesture {
+                                    selectedTask = task
+                                }
                         }
-                        .listStyle(PlainListStyle())
                     }
+                    .listStyle(.plain)
                 }
 
-                // MARK: Floating Add Button
+                // MARK: ADD BUTTON
 
                 VStack {
 
@@ -291,14 +318,14 @@ struct DailyPlannerView: View {
                         } label: {
 
                             Image(systemName: "plus")
-                                .font(.system(size: 24))
+                                .font(.system(size: 24, weight: .bold))
                                 .foregroundColor(.white)
-                                .padding()
+                                .padding(20)
                                 .background(Circle().fill(Color.purple))
-                                .shadow(radius: 4)
+                                .shadow(radius: 8)
                         }
-                        .padding(.bottom, 20)
-                        .padding(.trailing, 20)
+                        .padding(.bottom, 24)
+                        .padding(.trailing, 22)
                     }
                 }
             }
@@ -330,11 +357,9 @@ struct DailyPlannerView: View {
         }
     }
 
-    // MARK: Task Card UI
-
     func taskCard(_ task: Task) -> some View {
 
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
 
             Button {
 
@@ -348,8 +373,8 @@ struct DailyPlannerView: View {
             } label: {
 
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(task.isCompleted ? .green : .gray)
-                    .font(.system(size: 20))
+                    .foregroundColor(task.isCompleted ? .purple : .gray)
+                    .font(.system(size: 22))
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -360,9 +385,8 @@ struct DailyPlannerView: View {
 
                     Text(task.title)
                         .font(.headline)
-                        .lineLimit(1)
                         .strikethrough(task.isCompleted)
-                        .foregroundColor(task.isCompleted ? .gray : .primary)
+                        .foregroundColor(task.isCompleted ? .gray : .white)
                 }
 
                 if !task.notes.isEmpty {
@@ -380,41 +404,25 @@ struct DailyPlannerView: View {
 
             Spacer()
         }
-        .padding()
+        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color(UIColor.systemGray6))
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color(red: 0.12, green: 0.12, blue: 0.14))
+                .shadow(color: .black.opacity(0.4), radius: 6, x: 0, y: 3)
         )
+        .padding(.horizontal, 16)
     }
-
-    // MARK: Priority Badge
 
     func priorityBadge(_ task: Task) -> some View {
 
-        let color: Color
-
-        switch task.priority {
-
-        case .low:
-            color = .green
-
-        case .medium:
-            color = .orange
-
-        case .high:
-            color = .red
-        }
-
-        return Text(task.priority.rawValue.capitalized)
+        Text(task.priority.rawValue.capitalized)
             .font(.caption2)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.2))
-            .foregroundColor(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.purple.opacity(0.2))
+            .foregroundColor(.purple)
             .cornerRadius(6)
     }
-
-    // MARK: Calendar Helpers
 
     func next7Days() -> [Date] {
         let calendar = Calendar.current
