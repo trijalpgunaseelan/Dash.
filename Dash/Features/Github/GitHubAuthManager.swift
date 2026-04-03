@@ -213,6 +213,13 @@ final class GitHubAuthManager: ObservableObject {
     private func startWebAuthentication(url: URL, callbackScheme: String) async throws -> URL {
         try await withCheckedThrowingContinuation { continuation in
             let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) { callbackURL, error in
+
+                if let error = error as? ASWebAuthenticationSessionError,
+                   error.code == .canceledLogin {
+                    continuation.resume(throwing: APIServiceError.oauthError(message: "Login was cancelled."))
+                    return
+                }
+
                 if let error {
                     continuation.resume(throwing: error)
                     return
@@ -226,7 +233,9 @@ final class GitHubAuthManager: ObservableObject {
                 continuation.resume(returning: callbackURL)
             }
 
-            session.prefersEphemeralWebBrowserSession = false
+            // FIX: Use ephemeral session to avoid device/account conflicts
+            session.prefersEphemeralWebBrowserSession = true
+
             session.presentationContextProvider = PresentationContextProvider.shared
             webAuthenticationSession = session
 
@@ -258,7 +267,6 @@ final class GitHubAuthManager: ObservableObject {
 
             try await center.add(request)
         } catch {
-            // Ignore local notification errors to avoid blocking GitHub data flow.
         }
     }
 }
@@ -267,10 +275,14 @@ private final class PresentationContextProvider: NSObject, ASWebAuthenticationPr
     static let shared = PresentationContextProvider()
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-            .first(where: { $0.isKeyWindow }) ?? ASPresentationAnchor()
+
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first(where: { $0.isKeyWindow }) {
+            return window
+        }
+
+        // FIX: Ensure a valid window is always returned
+        return UIApplication.shared.windows.first ?? ASPresentationAnchor()
     }
 }
 

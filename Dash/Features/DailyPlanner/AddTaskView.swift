@@ -32,7 +32,7 @@ struct AddTaskView: View {
                         }
                 }
 
-                // MARK: Notes / Description
+                // MARK: Notes
 
                 Section(header: Text("Notes").font(.headline)) {
 
@@ -42,7 +42,7 @@ struct AddTaskView: View {
                         }
                 }
 
-                // MARK: Due Date & Time
+                // MARK: Due Date
 
                 Section(header: Text("Due Date & Time").font(.headline)) {
 
@@ -62,29 +62,9 @@ struct AddTaskView: View {
 
                     Picker("Priority", selection: $task.priority) {
 
-                        HStack {
-                            Circle()
-                                .fill(Color.green)
-                                .frame(width: 8, height: 8)
-                            Text("Low")
-                        }
-                        .tag(TaskPriority.low)
-
-                        HStack {
-                            Circle()
-                                .fill(Color.orange)
-                                .frame(width: 8, height: 8)
-                            Text("Medium")
-                        }
-                        .tag(TaskPriority.medium)
-
-                        HStack {
-                            Circle()
-                                .fill(Color.red)
-                                .frame(width: 8, height: 8)
-                            Text("High")
-                        }
-                        .tag(TaskPriority.high)
+                        Text("Low").tag(TaskPriority.low)
+                        Text("Medium").tag(TaskPriority.medium)
+                        Text("High").tag(TaskPriority.high)
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: task.priority) { _ in
@@ -107,8 +87,6 @@ struct AddTaskView: View {
             .accentColor(.purple)
         }
     }
-
-    // MARK: Auto Save
 
     private func autoSave() {
 
