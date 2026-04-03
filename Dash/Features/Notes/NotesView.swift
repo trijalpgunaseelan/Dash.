@@ -6,8 +6,6 @@
 //  Edited by Dhaskhika on 2/4/26
 //
 
-
-
 import SwiftUI
 
 struct NotesView: View {
@@ -51,8 +49,6 @@ struct NotesView: View {
             ZStack {
                 VStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Notes")
-                            .font(.system(size: 26, weight: .bold))
 
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
@@ -155,7 +151,9 @@ struct NotesView: View {
                 ) { EmptyView() }
             }
 
-            // ONLY ADDITION
+            .navigationTitle("Notes")
+            .navigationBarTitleDisplayMode(.inline)
+
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     AppMenuButton()

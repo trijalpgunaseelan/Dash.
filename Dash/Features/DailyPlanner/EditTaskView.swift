@@ -3,11 +3,14 @@
 //  Dash
 //
 //  Created by Trijal Gunaseelan on 5/30/25.
-//
+//  Edited by Dhakshika
+
+
 
 import SwiftUI
 
 struct EditTaskView: View {
+
     @Environment(\.presentationMode) var presentationMode
     @State private var taskCopy: Task
     var viewModel: DailyPlannerViewModel
@@ -18,35 +21,61 @@ struct EditTaskView: View {
     }
 
     var body: some View {
+
         Form {
+
             Section(header: Text("Title")) {
+
                 TextField("Enter task title", text: $taskCopy.title)
-                    .onChange(of: taskCopy.title) { _ in
-                        autoSave()
-                    }
+                    .onChange(of: taskCopy.title) { _ in autoSave() }
             }
 
-            Section(header: Text("Due Date")) {
-                DatePicker("Due", selection: $taskCopy.dueDate, displayedComponents: .date)
-                    .onChange(of: taskCopy.dueDate) { _ in
-                        autoSave()
+            Section(header: Text("Notes")) {
+
+                TextField("Optional description", text: $taskCopy.notes)
+                    .onChange(of: taskCopy.notes) { _ in autoSave() }
+            }
+
+            Section(header: Text("Due Date & Time")) {
+
+                DatePicker(
+                    "Due",
+                    selection: $taskCopy.dueDate,
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .onChange(of: taskCopy.dueDate) { _ in autoSave() }
+            }
+
+            Section(header: Text("Priority")) {
+
+                Picker("Priority", selection: $taskCopy.priority) {
+
+                    ForEach(TaskPriority.allCases) { priority in
+                        Text(priority.rawValue.capitalized)
                     }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .onChange(of: taskCopy.priority) { _ in autoSave() }
             }
 
             Section {
+
                 Toggle("Completed", isOn: $taskCopy.isCompleted)
-                    .onChange(of: taskCopy.isCompleted) { _ in
-                        autoSave()
-                    }
+                    .onChange(of: taskCopy.isCompleted) { _ in autoSave() }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+
         .toolbar {
+
             ToolbarItem(placement: .principal) {
+
                 Text(
                     taskCopy.title.isEmpty
                     ? "New Task"
-                    : (taskCopy.title.count > 25 ? String(taskCopy.title.prefix(25)) + "…" : taskCopy.title)
+                    : (taskCopy.title.count > 25
+                       ? String(taskCopy.title.prefix(25)) + "…"
+                       : taskCopy.title)
                 )
                 .font(.headline)
                 .lineLimit(1)
@@ -58,6 +87,7 @@ struct EditTaskView: View {
     }
 
     private func autoSave() {
+
         viewModel.addOrUpdate(taskCopy)
     }
 }

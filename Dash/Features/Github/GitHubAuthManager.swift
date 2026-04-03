@@ -183,7 +183,7 @@ final class GitHubAuthManager: ObservableObject {
         user = try await APIService.fetchAuthenticatedUser(accessToken: token)
     }
 
-    private func fetchRepositories() async throws {
+    func fetchRepositories() async throws {
         guard let token = accessToken else {
             throw APIServiceError.oauthError(message: "Missing access token.")
         }

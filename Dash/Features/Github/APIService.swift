@@ -53,6 +53,8 @@ struct Repository: Identifiable, Decodable {
     let htmlURL: String
     let createdAt: Date?
     let isPrivate: Bool?
+    let stargazersCount: Int?
+    let forksCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -61,6 +63,8 @@ struct Repository: Identifiable, Decodable {
         case htmlURL = "html_url"
         case createdAt = "created_at"
         case isPrivate = "private"
+        case stargazersCount = "stargazers_count"
+        case forksCount = "forks_count"
     }
 }
 
@@ -90,6 +94,7 @@ struct GitHubNotification: Identifiable, Decodable {
 }
 
 struct APIService {
+
     private struct OAuthTokenResponse: Decodable {
         let accessToken: String?
         let scope: String?
@@ -112,6 +117,7 @@ struct APIService {
         clientID: String,
         clientSecret: String
     ) async throws -> String {
+
         guard let url = URL(string: "https://github.com/login/oauth/access_token") else {
             throw APIServiceError.invalidURL
         }
@@ -125,11 +131,13 @@ struct APIService {
         request.httpBody = body.data(using: .utf8)
 
         let (data, response) = try await URLSession.shared.data(for: request)
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIServiceError.invalidResponse
         }
 
         let tokenResponse = try JSONDecoder().decode(OAuthTokenResponse.self, from: data)
+
         if let error = tokenResponse.error {
             let message = tokenResponse.errorDescription ?? error
             throw APIServiceError.oauthError(message: message)
@@ -147,67 +155,67 @@ struct APIService {
     }
 
     static func fetchAuthenticatedUser(accessToken: String) async throws -> GitHubUser {
+
         guard let url = URL(string: "https://api.github.com/user") else {
             throw APIServiceError.invalidURL
         }
 
         let request = makeAuthenticatedRequest(url: url, accessToken: accessToken)
+
         let (data, response) = try await URLSession.shared.data(for: request)
+
         try validateHTTPResponse(response)
 
-        do {
-            return try JSONDecoder().decode(GitHubUser.self, from: data)
-        } catch {
-            throw APIServiceError.decodingError
-        }
+        return try JSONDecoder().decode(GitHubUser.self, from: data)
     }
 
     static func fetchRepositories(accessToken: String) async throws -> [Repository] {
+
         guard let url = URL(string: "https://api.github.com/user/repos?per_page=100") else {
             throw APIServiceError.invalidURL
         }
 
         let request = makeAuthenticatedRequest(url: url, accessToken: accessToken)
+
         let (data, response) = try await URLSession.shared.data(for: request)
+
         try validateHTTPResponse(response)
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
 
-        do {
-            return try decoder.decode([Repository].self, from: data)
-        } catch {
-            throw APIServiceError.decodingError
-        }
+        return try decoder.decode([Repository].self, from: data)
     }
 
     static func fetchNotifications(accessToken: String) async throws -> [GitHubNotification] {
+
         guard let url = URL(string: "https://api.github.com/notifications") else {
             throw APIServiceError.invalidURL
         }
 
         let request = makeAuthenticatedRequest(url: url, accessToken: accessToken)
+
         let (data, response) = try await URLSession.shared.data(for: request)
+
         try validateHTTPResponse(response)
 
-        do {
-            return try JSONDecoder().decode([GitHubNotification].self, from: data)
-        } catch {
-            throw APIServiceError.decodingError
-        }
+        return try JSONDecoder().decode([GitHubNotification].self, from: data)
     }
 
     private static func makeAuthenticatedRequest(url: URL, accessToken: String) -> URLRequest {
+
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("Dash-iOS", forHTTPHeaderField: "User-Agent")
+
         return request
     }
 
     private static func validateHTTPResponse(_ response: URLResponse) throws {
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIServiceError.invalidResponse
         }
