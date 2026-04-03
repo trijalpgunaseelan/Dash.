@@ -5,6 +5,7 @@
 //  Created by Trijal Gunaseelan on 11/19/24.
 //  Edited by Dhakshika on 2/4/26
 
+
 import SwiftUI
 
 struct ProjectView: View {
@@ -54,6 +55,9 @@ struct ProjectView: View {
                 VStack(spacing: 0) {
 
                     VStack(alignment: .leading, spacing: 8) {
+
+                        Text("Projects")
+                            .font(.system(size: 26, weight: .bold))
 
                         ScrollView(.horizontal, showsIndicators: false) {
 
@@ -178,15 +182,13 @@ struct ProjectView: View {
                 ) { EmptyView() }
             }
 
-            .navigationTitle("Projects")
-            .navigationBarTitleDisplayMode(.inline)
-
             .sheet(isPresented: $showingAddProject) {
                 AddProjectView(projects: $projects)
             }
 
             .onAppear(perform: loadProjects)
 
+            // MENU BUTTON FIXED HERE
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     AppMenuButton()
@@ -194,6 +196,8 @@ struct ProjectView: View {
             }
         }
     }
+
+    // Rest of your file remains unchanged
 
     private func projectRow(_ project: Project) -> some View {
         let textColor: Color = project.isProjectCompleted ? .gray : .primary
