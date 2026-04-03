@@ -2,19 +2,20 @@
 //  NotesView.swift
 //  Dash
 //
-//  Created by Trijal Gunaseelan on 11/23/24.
-//  Edited by Dhaskhika on 2/4/26
-//
 
 import SwiftUI
 
 struct NotesView: View {
 
     @StateObject private var viewModel = NotesViewModel()
+
     @State private var selectedNote: Note? = nil
     @State private var searchText = ""
 
     @State private var pinnedNotes: Set<UUID> = []
+
+    // same refresh system as DailyPlanner
+    @State private var refreshID = UUID()
 
     enum SortOption: String, CaseIterable, Identifiable {
         case createdDescending = "Newest"
@@ -27,8 +28,6 @@ struct NotesView: View {
 
     @State private var sortOption: SortOption = .createdDescending
 
-    // MARK: FILTER
-
     var filteredNotes: [Note] {
 
         if searchText.isEmpty { return viewModel.notes }
@@ -38,8 +37,6 @@ struct NotesView: View {
             $0.content.lowercased().contains(searchText.lowercased())
         }
     }
-
-    // MARK: SORT
 
     var sortedNotes: [Note] {
 
@@ -65,13 +62,13 @@ struct NotesView: View {
         return sorted.sorted { pinnedNotes.contains($0.id) && !pinnedNotes.contains($1.id) }
     }
 
-    // MARK: BODY
-
     var body: some View {
 
         NavigationView {
 
             ZStack {
+
+                Color.black.ignoresSafeArea()
 
                 VStack(spacing: 0) {
 
@@ -81,18 +78,46 @@ struct NotesView: View {
 
                     filterBar
 
-                    heatmap
-
                     notesList
                 }
 
                 floatingButton
-
-                navigationLink
             }
 
             .navigationTitle("Notes")
             .navigationBarTitleDisplayMode(.inline)
+
+            .onAppear {
+                refreshID = UUID()
+            }
+
+            .background(
+                NavigationLink(
+                    destination: selectedNote.map { selected in
+                        EditNoteView(
+                            note: Binding(
+                                get: {
+                                    viewModel.notes.first(where: { existing in
+                                        existing.id == selected.id
+                                    }) ?? selected
+                                },
+                                set: { newValue in
+                                    if let index = viewModel.notes.firstIndex(where: { existing in
+                                        existing.id == newValue.id
+                                    }) {
+                                        viewModel.notes[index] = newValue
+                                    }
+                                }
+                            ),
+                            viewModel: viewModel
+                        )
+                    },
+                    isActive: Binding(
+                        get: { selectedNote != nil },
+                        set: { if !$0 { selectedNote = nil } }
+                    )
+                ) { EmptyView() }
+            )
 
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -101,8 +126,6 @@ struct NotesView: View {
             }
         }
     }
-
-    // MARK: HEADER
 
     var header: some View {
 
@@ -129,8 +152,6 @@ struct NotesView: View {
         .padding(.top,10)
     }
 
-    // MARK: SEARCH
-
     var searchBar: some View {
 
         HStack {
@@ -142,13 +163,11 @@ struct NotesView: View {
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color(UIColor.systemGray6))
+                .fill(Color(white: 0.12))
         )
         .padding(.horizontal,16)
         .padding(.top,8)
     }
-
-    // MARK: FILTER BAR
 
     var filterBar: some View {
 
@@ -164,7 +183,7 @@ struct NotesView: View {
                         .padding(.vertical,7)
                         .background(
                             RoundedRectangle(cornerRadius:20)
-                                .fill(sortOption == option ? Color.purple : Color(UIColor.systemGray5))
+                                .fill(sortOption == option ? Color.purple : Color(white:0.18))
                         )
                         .foregroundColor(sortOption == option ? .white : .primary)
                         .onTapGesture {
@@ -176,39 +195,9 @@ struct NotesView: View {
             }
             .padding(.horizontal,16)
         }
-        .padding(.top,14)   // spacing fix
+        .padding(.top,14)
         .padding(.bottom,10)
     }
-
-    // MARK: HEATMAP
-
-    var heatmap: some View {
-
-        VStack(alignment:.leading) {
-
-            Text("Activity")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.horizontal,16)
-
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible()), count: 7),
-                spacing: 4
-            ) {
-
-                ForEach(0..<28) { _ in
-
-                    RoundedRectangle(cornerRadius:3)
-                        .fill(Color.purple.opacity(Double.random(in: 0.2...0.8)))
-                        .frame(height:10)
-                }
-            }
-            .padding(.horizontal,16)
-        }
-        .padding(.bottom,10)
-    }
-
-    // MARK: NOTES LIST
 
     var notesList: some View {
 
@@ -216,66 +205,67 @@ struct NotesView: View {
 
             ForEach(sortedNotes) { note in
 
-                Button {
+                modernNoteCard(note)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.black)
+                    .padding(.vertical,6)
 
-                    selectedNote = note
+                    .swipeActions(edge: .leading) {
 
-                } label: {
+                        Button {
 
-                    modernNoteCard(note)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .listRowInsets(EdgeInsets())
-                .listRowSeparator(.hidden)
-                .padding(.vertical,6)
+                            togglePin(note)
 
-                .swipeActions(edge: .leading) {
+                        } label: {
 
-                    Button {
-
-                        togglePin(note)
-
-                    } label: {
-
-                        Label("Pin", systemImage: "pin")
-                    }
-                    .tint(.orange)
-                }
-
-                .swipeActions(edge: .trailing) {
-
-                    Button(role: .destructive) {
-
-                        deleteNote(note)
-
-                    } label: {
-
-                        Label("Delete", systemImage: "trash")
+                            Label("Pin", systemImage: "pin")
+                        }
+                        .tint(.purple)
                     }
 
-                    Button {
+                    .swipeActions(edge: .trailing) {
 
-                        share(note)
+                        Button(role: .destructive) {
 
-                    } label: {
+                            deleteNote(note)
 
-                        Label("Share", systemImage: "square.and.arrow.up")
+                        } label: {
+
+                            Label("Delete", systemImage: "trash")
+                        }
+
+                        Button {
+
+                            share(note)
+
+                        } label: {
+
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
+                        .tint(.purple)
                     }
-                    .tint(.blue)
-                }
+
+                    .onTapGesture {
+
+                        // EXACT same refresh logic as planner
+                        refreshID = UUID()
+
+                        selectedNote = note
+                    }
             }
         }
+        .id(refreshID)
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
-
-    // MARK: NOTE CARD
 
     private func modernNoteCard(_ note: Note) -> some View {
 
         HStack(spacing:0) {
 
             Rectangle()
-                .fill(Color(hex: note.colorHex) ?? .purple)
+                .fill(Color.purple)
                 .frame(width:5)
 
             VStack(alignment:.leading,spacing:8) {
@@ -284,7 +274,7 @@ struct NotesView: View {
 
                     if pinnedNotes.contains(note.id) {
                         Image(systemName:"pin.fill")
-                            .foregroundColor(.orange)
+                            .foregroundColor(.purple)
                     }
 
                     Text(note.title.isEmpty ? "Untitled Note" : note.title)
@@ -326,13 +316,12 @@ struct NotesView: View {
             .padding()
         }
         .background(
-            RoundedRectangle(cornerRadius:12)
-                .fill(Color(UIColor.systemGray6))
+            RoundedRectangle(cornerRadius:18)
+                .fill(Color(red: 0.12, green: 0.12, blue: 0.14))
+                .shadow(color: .black.opacity(0.4), radius: 6, x: 0, y: 3)
         )
         .padding(.horizontal,8)
     }
-
-    // MARK: FLOATING BUTTON
 
     var floatingButton: some View {
 
@@ -362,36 +351,6 @@ struct NotesView: View {
             }
         }
     }
-
-    // MARK: NAVIGATION
-
-    var navigationLink: some View {
-
-        NavigationLink(
-            destination: selectedNote.map { note in
-
-                EditNoteView(
-                    note: Binding(
-                        get: {
-                            viewModel.notes.first(where: { $0.id == note.id }) ?? note
-                        },
-                        set: { newValue in
-                            if let index = viewModel.notes.firstIndex(where: { $0.id == note.id }) {
-                                viewModel.notes[index] = newValue
-                            }
-                        }
-                    ),
-                    viewModel: viewModel
-                )
-            },
-            isActive: Binding(
-                get: { selectedNote != nil },
-                set: { if !$0 { selectedNote = nil } }
-            )
-        ) { EmptyView() }
-    }
-
-    // MARK: ACTIONS
 
     func togglePin(_ note: Note) {
 

@@ -1,5 +1,7 @@
+//
 //  DailyPlannerView.swift
 //  Dash
+//
 
 import SwiftUI
 
@@ -13,6 +15,9 @@ struct DailyPlannerView: View {
     @State private var filter: Filter = .all
     @State private var showCalendar = false
     @State private var focusMode = false
+
+    // refresh list to reset swipe state
+    @State private var refreshID = UUID()
 
     enum Filter: String, CaseIterable, Identifiable {
         case all = "All"
@@ -105,8 +110,6 @@ struct DailyPlannerView: View {
 
                 VStack(spacing: 0) {
 
-                    // MARK: PROGRESS
-
                     VStack(alignment: .leading, spacing: 10) {
 
                         Text("Today's Progress")
@@ -161,8 +164,6 @@ struct DailyPlannerView: View {
                         .background(Color.white.opacity(0.15))
                         .padding(.horizontal, 18)
 
-                    // MARK: FILTERS
-
                     ScrollView(.horizontal, showsIndicators: false) {
 
                         HStack(spacing: 10) {
@@ -189,8 +190,6 @@ struct DailyPlannerView: View {
                         .padding(.horizontal, 18)
                         .padding(.vertical, 10)
                     }
-
-                    // MARK: CALENDAR
 
                     VStack(alignment: .leading, spacing: 12) {
 
@@ -251,8 +250,6 @@ struct DailyPlannerView: View {
                         .background(Color.white.opacity(0.15))
                         .padding(.horizontal, 18)
 
-                    // MARK: TASK LIST
-
                     List {
 
                         ForEach(filteredTasks) { task in
@@ -260,6 +257,7 @@ struct DailyPlannerView: View {
                             taskCard(task)
                                 .listRowInsets(EdgeInsets())
                                 .listRowSeparator(.hidden)
+                                .listRowBackground(Color.black)
                                 .padding(.vertical, 8)
 
                                 .swipeActions(edge: .leading) {
@@ -290,18 +288,22 @@ struct DailyPlannerView: View {
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
-                                    .tint(.purple)
+                                    .tint(.red)
                                 }
 
                                 .onTapGesture {
+
+                                    // reset swipe state BEFORE navigating
+                                    refreshID = UUID()
+
                                     selectedTask = task
                                 }
                         }
                     }
+                    .id(refreshID)
+                    .scrollContentBackground(.hidden)
                     .listStyle(.plain)
                 }
-
-                // MARK: ADD BUTTON
 
                 VStack {
 
@@ -332,6 +334,10 @@ struct DailyPlannerView: View {
 
             .navigationTitle("Daily Planner")
             .navigationBarTitleDisplayMode(.inline)
+
+            .onAppear {
+                refreshID = UUID()
+            }
 
             .sheet(isPresented: $showingAddTask) {
                 AddTaskView(viewModel: viewModel)
@@ -399,7 +405,7 @@ struct DailyPlannerView: View {
 
                 Text(task.dueDate, style: .date)
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(task.dueDate < Date() && !task.isCompleted ? .red : .secondary)
             }
 
             Spacer()
