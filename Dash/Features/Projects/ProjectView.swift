@@ -3,7 +3,8 @@
 //  Dash
 //
 //  Created by Trijal Gunaseelan on 11/19/24.
-//
+//  Edited by Dhakshika on 2/4/26
+
 
 import SwiftUI
 
@@ -46,16 +47,24 @@ struct ProjectView: View {
     }
 
     var body: some View {
+
         NavigationView {
+
             ZStack {
+
                 VStack(spacing: 0) {
+
                     VStack(alignment: .leading, spacing: 8) {
+
                         Text("Projects")
                             .font(.system(size: 26, weight: .bold))
 
                         ScrollView(.horizontal, showsIndicators: false) {
+
                             HStack(spacing: 8) {
+
                                 ForEach(SortOption.allCases) { option in
+
                                     Text(option.rawValue)
                                         .font(.subheadline)
                                         .padding(.horizontal, 12)
@@ -78,18 +87,29 @@ struct ProjectView: View {
                     .padding(.bottom, 4)
 
                     if sortedProjects.isEmpty {
+
                         Spacer()
+
                         Text("No Projects Yet")
                             .font(.title2)
                             .foregroundColor(.gray)
+
                         Spacer()
+
                     } else {
+
                         List {
+
                             ForEach(sortedProjects) { project in
+
                                 VStack {
+
                                     Button {
+
                                         selectedProject = project
+
                                     } label: {
+
                                         projectRow(project)
                                             .padding()
                                             .background(
@@ -111,12 +131,19 @@ struct ProjectView: View {
                 }
 
                 VStack {
+
                     Spacer()
+
                     HStack {
+
                         Spacer()
-                        Button(action: {
+
+                        Button {
+
                             showingAddProject = true
-                        }) {
+
+                        } label: {
+
                             Image(systemName: "plus")
                                 .font(.system(size: 24))
                                 .foregroundColor(.white)
@@ -154,18 +181,31 @@ struct ProjectView: View {
                     )
                 ) { EmptyView() }
             }
+
             .sheet(isPresented: $showingAddProject) {
                 AddProjectView(projects: $projects)
             }
+
             .onAppear(perform: loadProjects)
+
+            // MENU BUTTON FIXED HERE
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    AppMenuButton()
+                }
+            }
         }
     }
+
+    // Rest of your file remains unchanged
 
     private func projectRow(_ project: Project) -> some View {
         let textColor: Color = project.isProjectCompleted ? .gray : .primary
 
         return HStack(spacing: 12) {
+
             VStack(alignment: .leading, spacing: 4) {
+
                 Text(String(project.name.prefix(25)))
                     .font(.headline)
                     .lineLimit(1)
@@ -181,10 +221,12 @@ struct ProjectView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
+
                 DetailRow(title: "", value: project.projectType)
                     .foregroundColor(textColor)
 
                 VStack(alignment: .trailing, spacing: 0) {
+
                     Text(formattedDate(project.endDate))
                         .font(.subheadline)
                         .foregroundColor(deadlineColor(for: project))
@@ -196,11 +238,15 @@ struct ProjectView: View {
             }
 
             if !project.githubRepo.isEmpty {
-                Button(action: {
+
+                Button {
+
                     if let url = URL(string: project.githubRepo) {
                         UIApplication.shared.open(url)
                     }
-                }) {
+
+                } label: {
+
                     Image(systemName: "arrow.up.right.square.fill")
                         .font(.title2)
                         .foregroundColor(.purple)
@@ -210,54 +256,72 @@ struct ProjectView: View {
     }
 
     private func formattedDate(_ date: Date) -> String {
+
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         return formatter.string(from: date)
     }
 
     private func deadlineColor(for project: Project) -> Color {
+
         let today = Calendar.current.startOfDay(for: Date())
         let end = Calendar.current.startOfDay(for: project.endDate)
+
         let daysLeft = Calendar.current.dateComponents([.day], from: today, to: end).day ?? 0
+
         return daysLeft <= 10 ? .red : .green
     }
 
     private func deadlineLabel(for project: Project) -> String {
+
         let today = Calendar.current.startOfDay(for: Date())
         let end = Calendar.current.startOfDay(for: project.endDate)
+
         let daysLeft = Calendar.current.dateComponents([.day], from: today, to: end).day ?? 0
 
         switch daysLeft {
+
         case ..<0:
             return "Overdue by \(-daysLeft) day\(abs(daysLeft) == 1 ? "" : "s")"
+
         case 0:
             return "Due today"
+
         case 1:
             return "Due tomorrow"
+
         default:
             return "Due in \(daysLeft) days"
         }
     }
 
     private func deleteProject(at offsets: IndexSet) {
+
         for index in offsets {
+
             let projectToDelete = sortedProjects[index]
+
             if let actualIndex = projects.firstIndex(where: { $0.id == projectToDelete.id }) {
                 projects.remove(at: actualIndex)
             }
         }
+
         saveProjectsToStorage()
     }
 
     private func loadProjects() {
+
         if let data = UserDefaults.standard.data(forKey: "projects"),
            let savedProjects = try? JSONDecoder().decode([Project].self, from: data) {
+
             projects = savedProjects
         }
     }
 
     private func saveProjectsToStorage() {
+
         if let data = try? JSONEncoder().encode(projects) {
+
             UserDefaults.standard.set(data, forKey: "projects")
         }
     }

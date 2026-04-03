@@ -2,13 +2,11 @@
 //  MainTabView.swift
 //  Dash
 //
-//  Created by Trijal Gunaseelan on 11/20/24.
-//
-
+//  Created by Trijal Gunaseelan on 11/19/24.
+//  Edited by Dhakshika on 2/4/26
 import SwiftUI
 
 struct MainTabView: View {
-    @State private var isMenuOpen = false
 
     init() {
         UITabBar.appearance().backgroundColor = UIColor.black
@@ -16,87 +14,48 @@ struct MainTabView: View {
     }
 
     var body: some View {
-        ZStack {
-            TabView {
-                GitHubView()
-                    .tabItem {
-                        VStack {
-                            Image("githubIcon")
-                                .renderingMode(.template)
-                                .foregroundColor(.purple)
-                            Text("GitHub")
-                        }
-                    }
-                
-                DailyPlannerView()
-                    .tabItem {
-                        VStack {
-                            Image(systemName: "calendar")
-                                .foregroundColor(.purple)
-                            Text("Planner")
-                        }
-                    }
-            
-                NotesView()
-                    .tabItem {
-                        VStack {
-                            Image("notesIcon")
-                                .renderingMode(.template)
-                                .foregroundColor(.purple)
-                            Text("Notes")
-                        }
-                    }
 
-                ProjectView()
-                    .tabItem {
-                        VStack {
-                            Image("projectIcon")
-                                .renderingMode(.template)
-                                .foregroundColor(.purple)
-                            Text("Projects")
-                        }
-                    }
-            }
-            .accentColor(.purple)
-            .onAppear {
-                UITabBar.appearance().tintColor = UIColor.purple
-            }
+        TabView {
 
-            if isMenuOpen {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        withAnimation {
-                            isMenuOpen = false
-                        }
+            GitHubView()
+                .tabItem {
+                    VStack {
+                        Image("githubIcon")
+                            .renderingMode(.template)
+                            .foregroundColor(.purple)
+                        Text("GitHub")
                     }
-
-                MenuView(isMenuOpen: $isMenuOpen)
-                    .transition(.move(edge: .trailing))
-            }
-
-            VStack {
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        withAnimation {
-                            isMenuOpen.toggle()
-                        }
-                    }) {
-                        Image(systemName: "line.horizontal.3")
-                            .font(.system(size: 20))
-                            .foregroundColor(isMenuOpen ? .purple : .gray)
-                            .padding(12)
-                            .background(isMenuOpen ? Color.purple : Color.clear)
-                            .clipShape(Circle())
-                            .shadow(color: isMenuOpen ? .purple : .clear, radius: 5)
-                    }
-                    .padding(.trailing, 16)
                 }
-                Spacer()
-            }
-            .padding(.top, 50)
+
+            DailyPlannerView()
+                .tabItem {
+                    VStack {
+                        Image(systemName: "calendar")
+                        Text("Planner")
+                    }
+                }
+
+            NotesView()
+                .tabItem {
+                    VStack {
+                        Image("notesIcon")
+                            .renderingMode(.template)
+                        Text("Notes")
+                    }
+                }
+
+            ProjectView()
+                .tabItem {
+                    VStack {
+                        Image("projectIcon")
+                            .renderingMode(.template)
+                        Text("Projects")
+                    }
+                }
         }
-        .edgesIgnoringSafeArea(.top)
+        .accentColor(.purple)
+        .onAppear {
+            UITabBar.appearance().tintColor = UIColor.purple
+        }
     }
 }
