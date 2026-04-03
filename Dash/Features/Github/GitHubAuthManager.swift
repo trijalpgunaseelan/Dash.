@@ -49,8 +49,7 @@ final class GitHubAuthManager: ObservableObject {
             try await fetchNotifications()
             errorMessage = nil
         } catch {
-            await logoutFromGitHub()
-            errorMessage = "Saved session is no longer valid. Please sign in again."
+            errorMessage = "Failed to load saved session."
         }
     }
 
