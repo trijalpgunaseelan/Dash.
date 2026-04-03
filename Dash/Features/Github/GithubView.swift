@@ -3,7 +3,7 @@
 //  Dash
 //
 //  Created by Trijal Gunaseelan on 5/30/25.
-//  Edited by Dahkshika
+//  Edited by Dhakshika
 
 import SwiftUI
 
@@ -29,25 +29,18 @@ struct GitHubView: View {
     }
 
     private var sortedRepositories: [Repository] {
-
         let repositories = authManager.repositories
-
         switch sortOption {
         case .newest:
             return repositories.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
-
         case .oldest:
             return repositories.sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }
-
         case .nameAscending:
             return repositories.sorted { $0.name.lowercased() < $1.name.lowercased() }
-
         case .nameDescending:
             return repositories.sorted { $0.name.lowercased() > $1.name.lowercased() }
-
         case .publicFirst:
             return repositories.sorted { ($0.isPrivate ?? false) == false && ($1.isPrivate ?? false) == true }
-
         case .privateFirst:
             return repositories.sorted { ($0.isPrivate ?? false) == true && ($1.isPrivate ?? false) == false }
         }
@@ -64,7 +57,6 @@ struct GitHubView: View {
             ZStack {
 
                 VStack(spacing: 0) {
-
                     if authManager.isAuthenticated {
                         authenticatedContent
                     } else {
@@ -100,15 +92,21 @@ struct GitHubView: View {
                 )
             }
 
+            // FIX: Only ONE .task here. The previous code had TWO:
+            //   1. .task { restoreSession() }
+            //   2. .task(id: authManager.isAuthenticated) { loadAuthenticatedDataIfNeeded() }
+            //
+            // When restoreSession() set isAuthenticated = true mid-fetch, SwiftUI fired
+            // task #2 immediately, creating two concurrent fetches that cancelled each other
+            // — producing "Error: cancelled" every time the app reopened.
+            //
+            // The fix: restoreSession() now sets isAuthenticated = true only AFTER all
+            // data is loaded. Task #2 is removed entirely — it was redundant because
+            // both restoreSession() and signIn() already fetch everything themselves.
             .task {
                 guard !hasRestoredSession else { return }
                 hasRestoredSession = true
                 await authManager.restoreSession()
-            }
-
-            .task(id: authManager.isAuthenticated) {
-                guard hasRestoredSession, authManager.isAuthenticated else { return }
-                await authManager.loadAuthenticatedDataIfNeeded()
             }
         }
     }
@@ -145,13 +143,10 @@ struct GitHubView: View {
     private var toolbarContent: some ToolbarContent {
 
         ToolbarItem(placement: .navigationBarLeading) {
-
             Button {
                 showNotifications = true
             } label: {
-
                 ZStack(alignment: .topTrailing) {
-
                     Image(systemName: "bell")
                         .font(.system(size: 18, weight: .medium))
 
@@ -166,7 +161,6 @@ struct GitHubView: View {
         }
 
         ToolbarItem(placement: .navigationBarTrailing) {
-
             AppMenuButton(
                 showLogout: true,
                 logoutAction: {
@@ -186,33 +180,27 @@ struct GitHubView: View {
 
                 ProgressView("Loading repositories...")
                     .padding()
-
                 Spacer()
 
             } else if let error = authManager.errorMessage {
 
                 Spacer()
-
                 Text("Error: \(error)")
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
                     .padding()
-
                 Spacer()
 
             } else if sortedRepositories.isEmpty {
 
                 Spacer()
-
                 Text("No repositories found.")
                     .foregroundColor(.gray)
-
                 Spacer()
 
             } else {
 
                 List {
-
                     ForEach(sortedRepositories) { repo in
 
                         VStack(alignment: .leading, spacing: 12) {
@@ -221,7 +209,6 @@ struct GitHubView: View {
                                 .font(.headline)
 
                             if let desc = repo.description {
-
                                 Text(desc)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
@@ -231,13 +218,9 @@ struct GitHubView: View {
                             Spacer().frame(height: 4)
 
                             HStack {
-
                                 HStack(spacing: 16) {
-
                                     Label("\(repo.stargazersCount ?? 0)", systemImage: "star")
-
                                     Label("\(repo.forksCount ?? 0)", systemImage: "tuningfork")
-
                                     Text(repo.isPrivate == true ? "Private" : "Public")
                                         .foregroundColor(repo.isPrivate == true ? .red : .green)
                                 }
@@ -246,13 +229,10 @@ struct GitHubView: View {
                                 Spacer()
 
                                 Button {
-
                                     if let url = URL(string: repo.htmlURL) {
                                         UIApplication.shared.open(url)
                                     }
-
                                 } label: {
-
                                     Label("Open in GitHub", systemImage: "arrow.up.right.square")
                                         .font(.caption)
                                         .foregroundColor(.purple)
@@ -270,9 +250,8 @@ struct GitHubView: View {
                     }
                 }
                 .listStyle(PlainListStyle())
-
                 .refreshable {
-                    try? await authManager.fetchRepositories()
+                    await authManager.refreshData()
                 }
             }
         }

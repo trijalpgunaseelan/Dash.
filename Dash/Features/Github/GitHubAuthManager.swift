@@ -40,32 +40,41 @@ final class GitHubAuthManager: ObservableObject {
             return
         }
 
+        // FIX: Store token but do NOT set isAuthenticated = true yet.
+        // Previously, flipping isAuthenticated mid-fetch triggered .task(id:) in the view,
+        // spawning a second concurrent fetch that cancelled the first — causing "Error: cancelled".
         accessToken = token
-        isAuthenticated = true
+        isLoading = true
+        defer { isLoading = false }
 
         do {
             try await fetchUserProfile()
             try await fetchRepositories()
             try await fetchNotifications()
+
+            // FIX: Only flip isAuthenticated after ALL data is ready.
+            // The view now transitions to authenticated state exactly once, with data already loaded.
             errorMessage = nil
+            isAuthenticated = true
+
+        } catch is CancellationError {
+            // SwiftUI cancelled the task during lifecycle — reset silently, no error shown
+            accessToken = nil
         } catch {
-            errorMessage = "Failed to load saved session."
+            accessToken = nil
+            errorMessage = "Failed to restore session: \(error.localizedDescription)"
         }
     }
 
     func signIn() async {
         errorMessage = nil
         isLoading = true
-
-        defer {
-            isLoading = false
-        }
+        defer { isLoading = false }
 
         do {
             guard !OAuthConfig.clientID.isEmpty else {
                 throw APIServiceError.oauthError(message: "Missing GitHub client ID configuration.")
             }
-
             guard !OAuthConfig.clientSecret.isEmpty else {
                 throw APIServiceError.oauthError(message: "Missing GitHub client secret configuration.")
             }
@@ -108,29 +117,31 @@ final class GitHubAuthManager: ObservableObject {
             }
 
             accessToken = token
-            isAuthenticated = true
 
             try await fetchUserProfile()
             try await fetchRepositories()
             try await fetchNotifications()
+
+            // FIX: Same pattern — flip isAuthenticated only after data is ready
             errorMessage = nil
+            isAuthenticated = true
+
+        } catch is CancellationError {
+            return
         } catch {
             await logoutFromGitHub()
             errorMessage = error.localizedDescription
         }
     }
 
-    func loadAuthenticatedDataIfNeeded() async {
+    func refreshData() async {
         guard isAuthenticated else { return }
-
         do {
-            if user == nil {
-                try await fetchUserProfile()
-            }
-            if repositories.isEmpty {
-                try await fetchRepositories()
-            }
+            try await fetchUserProfile()
+            try await fetchRepositories()
             try await fetchNotifications()
+        } catch is CancellationError {
+            return
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -179,7 +190,6 @@ final class GitHubAuthManager: ObservableObject {
         guard let token = accessToken else {
             throw APIServiceError.oauthError(message: "Missing access token.")
         }
-
         user = try await APIService.fetchAuthenticatedUser(accessToken: token)
     }
 
@@ -187,7 +197,6 @@ final class GitHubAuthManager: ObservableObject {
         guard let token = accessToken else {
             throw APIServiceError.oauthError(message: "Missing access token.")
         }
-
         repositories = try await APIService.fetchRepositories(accessToken: token)
     }
 
@@ -233,9 +242,7 @@ final class GitHubAuthManager: ObservableObject {
                 continuation.resume(returning: callbackURL)
             }
 
-            // FIX: Use ephemeral session to avoid device/account conflicts
             session.prefersEphemeralWebBrowserSession = true
-
             session.presentationContextProvider = PresentationContextProvider.shared
             webAuthenticationSession = session
 
@@ -247,27 +254,22 @@ final class GitHubAuthManager: ObservableObject {
 
     private func sendLocalNotificationForNewGitHubActivity(newCount: Int) async {
         let center = UNUserNotificationCenter.current()
-
         do {
             let settings = await center.notificationSettings()
             if settings.authorizationStatus == .notDetermined {
                 _ = try await center.requestAuthorization(options: [.alert, .sound, .badge])
             }
-
             let content = UNMutableNotificationContent()
             content.title = "GitHub Updates"
             content.body = "You have \(newCount) new GitHub notification\(newCount == 1 ? "" : "s")."
             content.sound = .default
-
             let request = UNNotificationRequest(
                 identifier: UUID().uuidString,
                 content: content,
                 trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
             )
-
             try await center.add(request)
-        } catch {
-        }
+        } catch {}
     }
 }
 
@@ -275,13 +277,10 @@ private final class PresentationContextProvider: NSObject, ASWebAuthenticationPr
     static let shared = PresentationContextProvider()
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let window = windowScene.windows.first(where: { $0.isKeyWindow }) {
             return window
         }
-
-        // FIX: Ensure a valid window is always returned
         return UIApplication.shared.windows.first ?? ASPresentationAnchor()
     }
 }
@@ -289,7 +288,6 @@ private final class PresentationContextProvider: NSObject, ASWebAuthenticationPr
 private struct KeychainHelper {
     func save(service: String, account: String, value: String) -> Bool {
         guard let data = value.data(using: .utf8) else { return false }
-
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -297,7 +295,6 @@ private struct KeychainHelper {
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         ]
-
         SecItemDelete(query as CFDictionary)
         let status = SecItemAdd(query as CFDictionary, nil)
         return status == errSecSuccess
@@ -311,16 +308,11 @@ private struct KeychainHelper {
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
-
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
-
         guard status == errSecSuccess,
               let data = item as? Data,
-              let value = String(data: data, encoding: .utf8) else {
-            return nil
-        }
-
+              let value = String(data: data, encoding: .utf8) else { return nil }
         return value
     }
 
@@ -330,7 +322,6 @@ private struct KeychainHelper {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account
         ]
-
         let status = SecItemDelete(query as CFDictionary)
         return status == errSecSuccess || status == errSecItemNotFound
     }
