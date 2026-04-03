@@ -93,7 +93,7 @@ struct GitHubView: View {
                 NotificationsView(
                     notifications: authManager.notifications,
                     onRefresh: {
-                        Swift.Task {
+                        _Concurrency.Task {
                             try? await authManager.fetchNotifications()
                         }
                     }
