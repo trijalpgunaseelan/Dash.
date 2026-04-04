@@ -16,6 +16,7 @@ struct Note: Identifiable, Codable {
     var imageDatas: [Data]?
     var createdAt: Date
     var colorHex: String
+    var reminder: Date?
 
     init(
         id: UUID = UUID(),
@@ -23,7 +24,8 @@ struct Note: Identifiable, Codable {
         content: String = "",
         images: [IdentifiableImage] = [],
         createdAt: Date = Date(),
-        colorHex: String = "#7C3AED"
+        colorHex: String = "#7C3AED",
+        reminder: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -31,6 +33,7 @@ struct Note: Identifiable, Codable {
         self.imageDatas = images.map { $0.image.jpegData(compressionQuality: 1.0)! }
         self.createdAt = createdAt
         self.colorHex = colorHex
+        self.reminder = reminder
     }
 
     var images: [IdentifiableImage] {
