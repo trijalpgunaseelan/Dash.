@@ -40,29 +40,29 @@ final class GitHubAuthManager: ObservableObject {
             return
         }
 
-        // FIX: Store token but do NOT set isAuthenticated = true yet.
-        // Previously, flipping isAuthenticated mid-fetch triggered .task(id:) in the view,
-        // spawning a second concurrent fetch that cancelled the first — causing "Error: cancelled".
+        // FIX: Do NOT set isLoading = true here.
+        // Setting any @Published property early causes a SwiftUI re-render.
+        // If the caller was a .task{} modifier, that re-render would cancel it.
+        // We now use onAppear + Task{} in the view (which SwiftUI cannot cancel),
+        // but we also avoid unnecessary published changes to be safe.
         accessToken = token
-        isLoading = true
-        defer { isLoading = false }
 
         do {
-            try await fetchUserProfile()
-            try await fetchRepositories()
+            async let userFetch: Void = fetchUserProfile()
+            async let repoFetch: Void = fetchRepositories()
+
+            // Run user + repos in parallel, then notifications
+            _ = try await (userFetch, repoFetch)
             try await fetchNotifications()
 
-            // FIX: Only flip isAuthenticated after ALL data is ready.
-            // The view now transitions to authenticated state exactly once, with data already loaded.
             errorMessage = nil
             isAuthenticated = true
 
-        } catch is CancellationError {
-            // SwiftUI cancelled the task during lifecycle — reset silently, no error shown
-            accessToken = nil
         } catch {
+            // No special CancellationError handling needed here anymore —
+            // the Task{} in onAppear cannot be cancelled by SwiftUI.
             accessToken = nil
-            errorMessage = "Failed to restore session: \(error.localizedDescription)"
+            errorMessage = nil // Don't show error on silent background restore failure
         }
     }
 
@@ -118,11 +118,11 @@ final class GitHubAuthManager: ObservableObject {
 
             accessToken = token
 
-            try await fetchUserProfile()
-            try await fetchRepositories()
+            async let userFetch: Void = fetchUserProfile()
+            async let repoFetch: Void = fetchRepositories()
+            _ = try await (userFetch, repoFetch)
             try await fetchNotifications()
 
-            // FIX: Same pattern — flip isAuthenticated only after data is ready
             errorMessage = nil
             isAuthenticated = true
 
@@ -137,8 +137,9 @@ final class GitHubAuthManager: ObservableObject {
     func refreshData() async {
         guard isAuthenticated else { return }
         do {
-            try await fetchUserProfile()
-            try await fetchRepositories()
+            async let userFetch: Void = fetchUserProfile()
+            async let repoFetch: Void = fetchRepositories()
+            _ = try await (userFetch, repoFetch)
             try await fetchNotifications()
         } catch is CancellationError {
             return

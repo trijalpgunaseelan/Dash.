@@ -85,6 +85,7 @@ struct GitHubView: View {
                 NotificationsView(
                     notifications: authManager.notifications,
                     onRefresh: {
+                        // FIX: Use _Concurrency.Task to avoid conflict with Dash.Task model
                         _Concurrency.Task {
                             try? await authManager.fetchNotifications()
                         }
@@ -92,27 +93,22 @@ struct GitHubView: View {
                 )
             }
 
-            // FIX: Only ONE .task here. The previous code had TWO:
-            //   1. .task { restoreSession() }
-            //   2. .task(id: authManager.isAuthenticated) { loadAuthenticatedDataIfNeeded() }
-            //
-            // When restoreSession() set isAuthenticated = true mid-fetch, SwiftUI fired
-            // task #2 immediately, creating two concurrent fetches that cancelled each other
-            // — producing "Error: cancelled" every time the app reopened.
-            //
-            // The fix: restoreSession() now sets isAuthenticated = true only AFTER all
-            // data is loaded. Task #2 is removed entirely — it was redundant because
-            // both restoreSession() and signIn() already fetch everything themselves.
-            .task {
+            // FIX: Use .onAppear + _Concurrency.Task{} instead of .task{}.
+            // SwiftUI's .task modifier cancels its work on every re-render.
+            // _Concurrency.Task created in .onAppear is not owned by SwiftUI
+            // and will never be cancelled by view lifecycle or state changes.
+            // Also using _Concurrency.Task explicitly to avoid conflict with Dash.Task model.
+            .onAppear {
                 guard !hasRestoredSession else { return }
                 hasRestoredSession = true
-                await authManager.restoreSession()
+                _Concurrency.Task {
+                    await authManager.restoreSession()
+                }
             }
         }
     }
 
     private var floatingGitHubButton: some View {
-
         Image("githubIcon")
             .resizable()
             .frame(width: 30, height: 30)
@@ -149,7 +145,6 @@ struct GitHubView: View {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "bell")
                         .font(.system(size: 18, weight: .medium))
-
                     if unreadCount > 0 {
                         Circle()
                             .fill(Color.red)
@@ -164,6 +159,7 @@ struct GitHubView: View {
             AppMenuButton(
                 showLogout: true,
                 logoutAction: {
+                    // FIX: _Concurrency.Task to avoid Dash.Task conflict
                     _Concurrency.Task {
                         await authManager.logoutFromGitHub()
                     }
@@ -177,13 +173,11 @@ struct GitHubView: View {
         VStack(spacing: 0) {
 
             if authManager.isLoading && sortedRepositories.isEmpty {
-
                 ProgressView("Loading repositories...")
                     .padding()
                 Spacer()
 
             } else if let error = authManager.errorMessage {
-
                 Spacer()
                 Text("Error: \(error)")
                     .foregroundColor(.red)
@@ -192,17 +186,14 @@ struct GitHubView: View {
                 Spacer()
 
             } else if sortedRepositories.isEmpty {
-
                 Spacer()
                 Text("No repositories found.")
                     .foregroundColor(.gray)
                 Spacer()
 
             } else {
-
                 List {
                     ForEach(sortedRepositories) { repo in
-
                         VStack(alignment: .leading, spacing: 12) {
 
                             Text(repo.name)
